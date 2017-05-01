@@ -8,11 +8,12 @@
 #property version   "1.00"
 #property strict
 
-#define FAIL  0
+#define FAIL  -1
 #define BUY   1
 #define SELL  2
 #define _TRUE  3
 #define _FALSE 4
+
 enum Take_Profit_Type{
    
    FIXED=0,
@@ -25,6 +26,12 @@ enum Strategy_Type
    BREAKIN=1,   
    BANDTOUCH=2,   
 };
+enum l_type
+{
+   MANUAL = 0,       //Mannual
+   AUTO   = 1        //Automatic
+};
+
 bool                   flag_b=false;
 bool                   flag_s=false;
 bool                   buyIgnore1=false;
@@ -38,7 +45,13 @@ bool                   sellIgnore3=false;
 bool                   buyIgnore4=false;
 bool                   sellIgnore4=false;
 double                 prevLot1=0.0,prevLot2=0.0,prevLot3=0.0,prevLot4=0.0, prevLot=0.0; 
-input int              Magic_Number = 1;                 //Magic Number
+input int              Magic_Number = 1;                 //Magic Number 
+extern string          set="----------Consecutive Losses--------------";//Consecutive Losses Settings
+input int              noConsqLossAllowed=3;             //Consecutive Losses Allowed
+input double           percentReduction=5;               //Lot Size Percent Reduction
+input l_type           lot_type=MANUAL;                  //Lot Type
+input double           _risk=20.0;                        //Risk
+
 extern string          order1="-------Order_1--------";  //Order 1 Settings
 bool                   order1Open=false;
 extern string          Strat_Name="Break Out Inverse";           //Strategy Name
@@ -61,10 +74,7 @@ input int              _risk_candle1=4;                  //candles to Read for R
 double                 _highestStop1;
 double                 _lowestStop1;
 input bool             _gapCloseCheck1=false;             //Use Close Candle after a certain time gap
-input int              _whenClose1= 50;                  //Time gap in minutes 
-extern string          set="----------Consequtive Losses--------------";//Consequtive Losses Settings
-input int              noConsqLossAllowed=3;             //Consequtive Losses Allowed
-input double           percentReduction=5;               //Lot Size Percent Reduction
+input int              _whenClose1= 50;                  //Time gap in minutes
        
 
 extern string          order1v2="-------Order_1V2--------";  //Order 1 Settings
@@ -1137,6 +1147,7 @@ double LotMoneyManagement(double risk,double stop)
    double lot=0.0;
    double Risk     = risk/100;
    lot             = Risk * AccountEquity()/ tickVal/stop;
+   Print("tick Value before Rounding: [",stop,"]");
    lot             = MathRound(lot/lotStep) * lotStep;
    if(lot < minLot)
     {
@@ -1146,9 +1157,10 @@ double LotMoneyManagement(double risk,double stop)
 }
 double CalculateStop(int type, double fixed, double v_factor)
 {
+   double point = MarketInfo(Symbol(),MODE_POINT);
    double atr=iATR(Symbol(),0,ATR_Period,0);
    if(type == VOLATILITY)return atr * v_factor;
-   else if(type == FIXED)return fixed;
+   else if(type == FIXED)return fixed*point;
    return 0.0;
 }
 
@@ -1157,7 +1169,7 @@ bool isConsequtiveLoss(int & losses, string name)
    int total =OrdersHistoryTotal();
    //int limit =total - noConsqLossAllowed;
    int loss=0;
-   for(int i= total-1; i<0; i--)
+   for(int i= total-1; i>0; i--)
    {
      if( OrderSelect(i,SELECT_BY_POS,MODE_HISTORY)>0)
      {
@@ -1180,7 +1192,7 @@ bool isConsequtiveLoss(int & losses, string name)
    
    if(loss >noConsqLossAllowed)
    {
-      Print("Number of Consequtive Losses[",loss,"]");
+      //Print("Number of Consequtive Losses[",loss,"]");
       return true;
    }
    return false;
@@ -1225,7 +1237,7 @@ void OnTick()
   {
 //---
    int count=0;
-   isConsequtiveLoss(count,Strat_Name);
+  
    Check_Market();
    if(isTrend())
    {
@@ -1274,10 +1286,22 @@ void OnTick()
            {
             Order_Ignore(Strat_Name,_timegap1,buyIgnore1,OP_BUY);
             Order_Ignore(Strat_Name,_timegap1,sellIgnore1,OP_SELL); 
-            double lot =LotSize;  
+            double lot =LotSize;
+            if(lot_type == AUTO)
+            {
+               double stop=CalculateStop(SL_Type,SL_Fixed,SL_Volatility_Factor);
+               lot = LotMoneyManagement(_risk,stop);
+            }
+            int lossTrades = 0;
+            isConsequtiveLoss(lossTrades,Strat_Name);  
+            Print("Number of Consequtive Losses[",lossTrades,"]");
+            
             if(Pattern1()==BUY && !sellIgnore1==true)
             {
-                
+                if(lossTrades>noConsqLossAllowed)
+                {
+                  lot = lossLotmanagement(prevLot,percentReduction);
+                }
                 Sell_Order(lot,Strat_Name,SL_Type,SL_Fixed,SL_Volatility_Factor,
                           TP_Type,TP_Fixed,TP_Volatility_Factor,OP_SELL);
                 SetLowest(_lowestStop1, _risk_candle1, _use_risk_candle1);
@@ -1286,6 +1310,10 @@ void OnTick()
             }
             if(Pattern1()==SELL && !buyIgnore1==true)
                {
+                  if(lossTrades>noConsqLossAllowed)
+                {
+                  lot = lossLotmanagement(prevLot,percentReduction);
+                }
                   Buy_Order(lot,Strat_Name,SL_Type,SL_Fixed,SL_Volatility_Factor,
                              TP_Type,TP_Fixed,TP_Volatility_Factor,OP_BUY);
                   SetHighest(_highestStop1, _risk_candle1, _use_risk_candle1);           
