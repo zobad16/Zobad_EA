@@ -188,7 +188,7 @@ int Pattern1()
 
 int Pattern_Mid()
 {
-   Print("Mid Passed 5");
+   //Print("Mid Passed 5");
    double mid = iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,0);
    int total = OrdersTotal();
    if(total<1)
@@ -199,20 +199,20 @@ int Pattern_Mid()
    Print("Total [",total,"]");
    for(int i=0;i<total; i++)
    {
-   Print("Mid Passed 6");
+  // Print("Mid Passed 6");
       if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0){
       if(OrderMagicNumber()==Magic_Number && OrderSymbol()==Symbol())
       {
-         Print("Mid Passed 6.1");
+        // Print("Mid Passed 6.1");
          if(OrderType()==OP_BUY)
          {
-            Print("Mid Passed 7");
+           // Print("Mid Passed 7");
             if(Low[0]<= mid)//touch on mid
                return BUY;
          }
          else if(OrderType()==OP_SELL)//touch on mid
          {
-            Print("Mid Passed 8");
+           // Print("Mid Passed 8");
             if(High[0]>=mid)
                return SELL;
          }
@@ -1652,12 +1652,12 @@ void OnTick()
       JumpToBreakeven(_breakEven1,Strat_Name1,_whenJump1,_jumpBy1);
        if(entry_type == MID && useGridding ==true)
          {
-            Print("Mid Passed 1");
+            //Print("Mid Passed 1");
             bool checkBuy=OrderIgnoreCheck(OP_BUY,Strat_Name1,buy_counter);
             bool checkSell=OrderIgnoreCheck(OP_SELL,Strat_Name1,sell_counter);
             if(Pattern_Mid() == BUY && checkSell==false && buy_counter<2)
             {
-               Print("Mid Passed 2");
+              // Print("Mid Passed 2");
                Print("Buy Counter [",buy_counter);
                double newLot=prevLotBuy*increaseLLotBy;
                Buy_Order(newLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
@@ -1667,7 +1667,7 @@ void OnTick()
             }
             else if(Pattern_Mid() == SELL && checkBuy == false && sell_counter<2)
             {
-               Print("Mid Passed 3");
+               //Print("Mid Passed 3");
                Print("Sell Counter [",sell_counter);
                double newLot=prevLotSell*increaseLLotBy;
                Sell_Order(newLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
