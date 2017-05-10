@@ -47,9 +47,8 @@ enum _type
   {
    INCREASE = 1, // Increase
    DECREASE = 0, // Decrease
-   SAME     = 2, // Same
+   SAME     = 2, // Fix
    AUTO     = 3, //Auto
-   FIX      = 4, //Fix
   };
 enum _type2
    {
@@ -78,9 +77,13 @@ input Entry_Type       entry_type = 0;                    //Entry Type
 input int              numberOfLegs=0;                    //Number of Legs
 input double           startLot=0.1;                      //Starting lots
 input bool             useGridding=true;                  //Use Gridding
-input _type            legIncreaseDecrease=INCREASE;      //Increase or decrease lot size on each leg. 1 = increase 0=decrease 
-input int              increaseLLotBy  = 2;               //Lot Size ratio to increase each leg by(in multiples)
-input int              decreaseLLotBy  = 2;               //Lot Size ratio to decrease each leg by(in multiples)
+
+extern string          leg="-------Leg Settings-----";    //Leg Settings
+input _type            legIncreaseDecrease=INCREASE;      //Position Size::Type
+input double           leg_Risk        = 2.0;             //Position Size::Auto.%Availalable Balance
+input double           fixLotSize      = 0.1;             //Position Size::Fixed Lot Size 
+input int              increaseLLotBy  = 2;               //Position Size::Increase Leg Size by(in multiples)
+input int              decreaseLLotBy  = 2;               //Position Size::Decrease Leg Size by(in multiples)
 input double           points = 30;                       //ADR::Points fo next Entry
 input Take_Profit_Type TP_Type1 = VOLATILITY;             //TP::Type
 input Take_Profit_Type SL_Type1= VOLATILITY;              //SL::Type
@@ -188,7 +191,6 @@ int Pattern1()
 
 int Pattern_Mid()
 {
-   //Print("Mid Passed 5");
    double mid = iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,0);
    int total = OrdersTotal();
    if(total<1)
@@ -196,10 +198,8 @@ int Pattern_Mid()
       Print("No Orders");
       return FAIL;
    }
-   Print("Total [",total,"]");
    for(int i=0;i<total; i++)
    {
-  // Print("Mid Passed 6");
       if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0){
       if(OrderMagicNumber()==Magic_Number && OrderSymbol()==Symbol())
       {
@@ -212,7 +212,6 @@ int Pattern_Mid()
          }
          else if(OrderType()==OP_SELL)//touch on mid
          {
-           // Print("Mid Passed 8");
             if(High[0]>=mid)
                return SELL;
          }
@@ -696,17 +695,17 @@ bool Trailing_Stop_Revised(bool chck,string comment,int trail)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-      bool Trail(double sl)
-        {
-         Print("Trailing....");
-         bool tckt=OrderModify(OrderTicket(),OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
-         if(!tckt)
-           {
-            Print("Error Trail Modify: Error No[",GetLastError(),"]");
-            return false;
-           }
-         return true;
-        }
+bool Trail(double sl)
+{
+   Print("Trailing....");
+   bool tckt=OrderModify(OrderTicket(),OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
+   if(!tckt)
+   {
+     Print("Error Trail Modify: Error No[",GetLastError(),"]");
+     return false;
+   }
+   return true;
+}
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -729,8 +728,6 @@ bool JumpToBreakeven(bool check,string comment,int when,int by)
                  {
                    if(OrderType()==OP_BUY)
                      {
-                       //if stoploss below open price then ignore
-                       //else if 
                        if(OrderStopLoss()<OrderOpenPrice())
                         {
                           if(Bid-OrderOpenPrice()>=when *point)
@@ -741,18 +738,18 @@ bool JumpToBreakeven(bool check,string comment,int when,int by)
                             }
                         }
                      }
-                    else if(OrderType()==OP_SELL)
-                      {
-                        if(OrderStopLoss()>OrderOpenPrice())
-                          {
+                   else if(OrderType()==OP_SELL)
+                     {
+                       if(OrderStopLoss()>OrderOpenPrice())
+                         {
                            if(OrderOpenPrice()-Ask>=when *point)
                              {
                               Print("Sell Jump to Breakeven");
                               double sl=NormalizeDouble(OrderOpenPrice()-by *point,digit);
                               JumpToBreakeven(OrderTicket(),sl);
                              }
-                          }
-                      }
+                         }
+                     }
                   }
               }
          }
@@ -762,17 +759,17 @@ bool JumpToBreakeven(bool check,string comment,int when,int by)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-      bool JumpToBreakeven(int tickt,double sl)
-        {
-         bool tckt=OrderModify(tickt,OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
-         if(!tckt)
-           {
-            Print("Error Trail Modify: Error No[",GetLastError(),"]");
-            return false;
-           }
-         return true;
+bool JumpToBreakeven(int tickt,double sl)
+{
+   bool tckt=OrderModify(tickt,OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
+   if(!tckt)
+   {
+      Print("Error Trail Modify: Error No[",GetLastError(),"]");
+      return false;
+   }
+   return true;
 
-        }
+}
 //+------------------------------------------------------------------+
 //| Reversal                                                         |
 //+------------------------------------------------------------------+
@@ -840,7 +837,7 @@ bool MarketClose(string comment,double low,double high)
                          return true;
                        }
                       else return false;
-                   }
+                    }
                 }
                else
                  return false;
@@ -856,7 +853,6 @@ bool riskManagementClose(bool check,string comment,int gap)
  {
    if(check==false)
     return false;
-
    int total= OrdersTotal();
    for(int i=0; i<total;i++)
     {
@@ -864,18 +860,17 @@ bool riskManagementClose(bool check,string comment,int gap)
        {
          if(OrderMagicNumber()==Magic_Number && OrderSymbol()==Symbol())
           {
-                  if(StringFind(OrderComment(),comment,0)!=-1)
-                    {
-
-                     double dif=double(Time[0]-OrderOpenTime());
-                     if(dif>=gap*60){  Print("Inside risk Management Close");MarketClose(OrderTicket(),OrderLots());}
-                    }
-                 }
-               return false;
-              }
-           }
+            if(StringFind(OrderComment(),comment,0)!=-1)
+            {
+               double dif=double(Time[0]-OrderOpenTime());
+               if(dif>=gap*60){  Print("Inside risk Management Close");MarketClose(OrderTicket(),OrderLots());}
+            }
+          }
          return false;
-        }
+       }
+    }
+    return false;
+ }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -922,11 +917,11 @@ bool Order_Ignore(int i,string comment,int gap,bool  &flag,int _op)
                   }
                  return true;
                 }
-                     return false;
+               return false;
              }
           }
-         }
-        return false;
+       }
+      return false;
      }
      return false;
   }
@@ -957,9 +952,7 @@ bool OrderIgnoreCheck(int op,string comment,int  &count)
             if(StringFind(OrderComment(),comment,0)!=-1)
             {
                 if(OrderType()==op)
-                {
-                   return true;
-                }
+                  return true;
             }
          }
        }
@@ -985,15 +978,12 @@ void OrderCounterCheck(int op,string comment,int  &c)
             if(StringFind(OrderComment(),comment,0)!=-1)
              {
                if(OrderType()==op)
-                {
                   count++;
-                }
              }
-           }
+          }
        }
     }
-         c=count;
-
+    c=count;
  }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -1078,7 +1068,7 @@ bool LegBasedClose(string comment)
                            CloseAllOrders();
                           }
                      }
-                  }
+                }
              }
 
          }
@@ -1154,8 +1144,6 @@ bool PendingModify(int sl_type, double _slf, double _slv ,int tp_type, double _t
                  NormalizeDouble(minsl*point,Digits);
    double sl=0.0,tp=0.0;
    double mid=iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
-   //Print("Minimum Broker SL: ",min_sl,"Point",point," Point",_Point);
-   //double prev_sl, prev_tp;
    int total =OrdersTotal();
    for(int i=total-1; i>=0;i--)
    {
@@ -1525,8 +1513,7 @@ double CalculateLot()
    double lotsize=0.0;
    int total = OrdersTotal();
    for(int i= total-1; i >0 ; i --)
-   {
-     
+   {     
       if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES))
       {
          lotsize=OrderLots();
@@ -1545,8 +1532,7 @@ double CalculateLot()
             lotsize= lotsize;
             return lotsize;
          }         
-      }
-   
+      }   
    }
    return lotsize;
    
@@ -1558,7 +1544,7 @@ void Increase_Count(int  &a)
 {
    a++;
 }
-
+//+------------------------------------------------------------------+//
 double GetLotsMicro(double lot, double risk)
 {
    double lots = lot;
@@ -1570,10 +1556,9 @@ double GetLotsMicro(double lot, double risk)
    double MinLots =0.01;
    double MaximalLots =50.0;
   //------------------------------------------------------//
-   if(lot_type == _AUTO)
+   if(lot_type == _AUTO|| legIncreaseDecrease == AUTO)
    {      
       lots = NormalizeDouble(AccountFreeMargin()*risk/100/1000.0, 2);
-      //lots = AccountFreeMargin()*risk/100/MarketInfo( Symbol(), MODE_MARGINREQUIRED);
       if(lots < minlot) lots = minlot;
       if (lots > MaximalLots) lots = MaximalLots;
       if (AccountFreeMargin() < Ask * lots * lotsize / leverage)
@@ -1582,6 +1567,7 @@ double GetLotsMicro(double lot, double risk)
    else lots=NormalizeDouble(lot,Digits);
    return lots;
 }
+//+------------------------------------------------------------------+//
 double GetLotsMini(double lot , double risk)
 {
    double lots = lot;
@@ -1593,11 +1579,9 @@ double GetLotsMini(double lot , double risk)
    double MinLots =0.01;
    double MaximalLots =50.0;
   //------------------------------------------------------//
-   if(lot_type == _AUTO)
+   if(lot_type == _AUTO|| legIncreaseDecrease == AUTO)
    {      
-      //lots = NormalizeDouble(AccountFreeMargin()*risk/100/1000.0, 1);
       lots = NormalizeDouble(AccountBalance()*risk/100/1000.0, 1);
-      //lots = AccountFreeMargin()*risk/100/MarketInfo( Symbol(), MODE_MARGINREQUIRED);
       if(lots < minlot) lots = minlot;
       if (lots > MaximalLots) lots = MaximalLots;
       if (AccountFreeMargin() < Ask * lots * lotsize / leverage)
@@ -1655,24 +1639,37 @@ void OnTick()
             //Print("Mid Passed 1");
             bool checkBuy=OrderIgnoreCheck(OP_BUY,Strat_Name1,buy_counter);
             bool checkSell=OrderIgnoreCheck(OP_SELL,Strat_Name1,sell_counter);
+            double lot = 0.0;
+            
             if(Pattern_Mid() == BUY && checkSell==false && buy_counter<2)
             {
               // Print("Mid Passed 2");
                Print("Buy Counter [",buy_counter);
-               double newLot=prevLotBuy*increaseLLotBy;
-               Buy_Order(newLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
+               if(legIncreaseDecrease == SAME) lot= fixLotSize;
+               else if(legIncreaseDecrease == AUTO) lot = GetLotsMini(lot, leg_Risk);
+               if(legIncreaseDecrease == INCREASE){
+                  lot =prevLotBuy*increaseLLotBy;//double newLot=prevLotBuy*increaseLLotBy;
+                  prevLotBuy=lot;
+               }
+               Print("Lot size[",lot,"]");
+               Buy_Order(lot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
                                TP_Type1,TP_Fixed1,TP_Volatility_Factor1,OP_BUY);
-               prevLotBuy=newLot;
                Increase_Count(buy_counter);            
             }
             else if(Pattern_Mid() == SELL && checkBuy == false && sell_counter<2)
             {
                //Print("Mid Passed 3");
                Print("Sell Counter [",sell_counter);
-               double newLot=prevLotSell*increaseLLotBy;
-               Sell_Order(newLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
+               if(legIncreaseDecrease == SAME) lot= fixLotSize;
+               else if(legIncreaseDecrease == AUTO) lot = GetLotsMini(lot, leg_Risk);
+               if(legIncreaseDecrease == INCREASE){
+                  lot =prevLotSell*increaseLLotBy;//double newLot=prevLotBuy*increaseLLotBy;
+                  prevLotSell=lot;
+               }
+               Print("Lot size[",lot,"]");
+               Sell_Order(lot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
                                 TP_Type1,TP_Fixed1,TP_Volatility_Factor1,OP_SELL);
-               prevLotSell=newLot;
+               
                Increase_Count(sell_counter);
             }
          }
@@ -1780,22 +1777,24 @@ void OnTick()
          Order_Ignore(Strat_Name1,_timegap1,sellIgnore1,OP_SELL);
          bool checkBuy=OrderIgnoreCheck(OP_BUY,Strat_Name1,buy_counter);
          bool checkSell=OrderIgnoreCheck(OP_SELL,Strat_Name1,sell_counter);
-               
+         double lot =startLot;
+         if(lot_type == _AUTO)
+            lot = GetLotsMini(lot,_risk);      
          if(entry_type == BREAK || entry_type == MID)
          { 
             if(Pattern1()==BUY && checkSell==false)
             {
-               Buy_Order(startLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
+               Buy_Order(lot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
                                TP_Type1,TP_Fixed1,TP_Volatility_Factor1,OP_BUY);
-               prevLotBuy=startLot;
+               prevLotBuy=lot;
                sell_counter=0;
                Increase_Count(buy_counter);
             }
             else if(Pattern1()==SELL && checkBuy==false)
             {
-               Sell_Order(startLot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
+               Sell_Order(lot,Strat_Name1,SL_Type1,SL_Fixed1,SL_Volatility_Factor1,
                                 TP_Type1,TP_Fixed1,TP_Volatility_Factor1,OP_SELL);
-               prevLotSell= startLot;
+               prevLotSell= lot;
                buy_counter=0;
                Increase_Count(sell_counter);
             }
