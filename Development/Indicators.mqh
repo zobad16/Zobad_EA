@@ -36,10 +36,10 @@ Indicators::Indicators()
    _period_BB  = 14;
    _period_atr = 14;
    _LR_period  = 0;
-   _LR_length  = 31;
-   _std_Channel_1 = 0.16;
-   _std_Channel_2 = 1.16;
-   _std_Channel_3 = 2.16;   
+   _LR_length  = 34;
+   _std_Channel_1 = 0.618;
+   _std_Channel_2 = 1.618;
+   _std_Channel_3 = 2.618;   
 }
 //+------------------------------------------------------------------+
 //|                                                                  |
