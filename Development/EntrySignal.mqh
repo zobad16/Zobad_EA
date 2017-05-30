@@ -54,7 +54,7 @@ class EntrySignal
    public:       
             EntrySignal();
             ~EntrySignal();
-            int  isSignalCandle(int type);
+            int  isSignalCandle(int type, int& _ccode);
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -157,7 +157,7 @@ int  EntrySignal::Std_Dev_Ch3()
    Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C3P[",(string)stdev_C3P,"] stdev_C3M[",(string)stdev_C3M,"]") ;
    return res;
 }
-int  EntrySignal::isSignalCandle(int type)
+int  EntrySignal::isSignalCandle(int type, int& _ccode)
 {   
    int res =FAIL;
    string rest="";
@@ -168,12 +168,14 @@ int  EntrySignal::isSignalCandle(int type)
       case REVERSAL    :
          break;
       case ST_DEV_C2   :
-         rest=""+ST_DEV_C2+""+Std_Dev_Ch2();
-         res = (int) rest;
+         res = Std_Dev_Ch2();
+         _ccode=(int)""+ST_DEV_C2+""+res;
+        // res = (int) rest;
          break;
       case ST_DEV_C3   :
-         rest=""+ST_DEV_C3+""+Std_Dev_Ch3();
-         res = (int)rest;
+         res = Std_Dev_Ch3();
+         _ccode=(int)""+ST_DEV_C3+""+res;
+         //res = (int)rest;
          break;
          
    }

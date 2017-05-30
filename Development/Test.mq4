@@ -29,6 +29,7 @@ int OnInit()
 void OnDeinit(const int reason)
   {
 //---
+   
    delete(algo);
    
   }
@@ -38,6 +39,26 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
-   algo.isSignalCandle(3);
+   if(IsNewBar())
+   {
+      int ccode=0;
+      algo.isSignalCandle(3,ccode);
+      Print("[",ccode,"]");
+   }
   }
 //+------------------------------------------------------------------+
+
+bool IsNewBar()
+  {
+   static datetime RegBarTime=0;
+   datetime ThisBarTime=Time[0];
+   if(ThisBarTime==RegBarTime)
+     {
+      return false;
+     }
+   else
+     {
+      RegBarTime=ThisBarTime;
+      return true;
+     }
+  }
