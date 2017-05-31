@@ -97,9 +97,11 @@ int  EntrySignal::Std_Dev_Ch2()
     * Logic:                                              |  
     *-------                                              |
     * Trade Reversal if:                                  |  
-    * Close Outside C2 and inside BB, and opens inside BB |  
+    * Close Outside C2 and inside BB, and opens inside BB | 
+    * Trade Directional if:                               |
+    * Close Outside C2 and outside BB, Open Outside BB    | 
     * Dont Trade if:                                      |
-    * Close Outside C2 and inside BB, and Open inside BB  |
+    * Close Outside C2 and outside BB, and Open inside BB |
     *------------------------------------------------------*/
     
    double bb_high = i.iBB(1,MODE_UPPER);
@@ -121,17 +123,20 @@ int  EntrySignal::Std_Dev_Ch2()
 }
 int  EntrySignal::Std_Dev_Ch3()
 {
-   /*------------------------------------------------------
-    * Logic:                                              |  
-    *-------                                              |
-    * Trade Directional if:                               |  
-    * 1)Market Crosses C3 and Close inside C3             |
-    * 2)Close and open outside C3 and BB                  |
-    * 3)If Reversal trade open and a Directional Signal   | 
-    * occur Close Directional and open Reversal           |
-    * Dont Trade if:                                      |
-    * Close Outside C2 and inside BB, and Open inside BB  |
-    *------------------------------------------------------*/
+   /*----------------------------------------------------------
+    * Logic:                                                  |  
+    *-------                                                  |
+    * Trade Directional if:                                   |  
+    * 1)Market Crosses C3 and Close inside C3 and outside BB  |
+    * 2)Close and open outside C3 and BB                      | 
+    * Trade Reversal if:                                      |         
+    * 1) Market Crosses C3 and Close inside C3 & BB           |
+    *--------------------------                               |
+    * If Reversal trade open and a Directional Signal         | 
+    * occur Close Directional and open Reversal (hedge T/F)   |
+    * Dont Trade if:                                          |
+    * Close Outside C2 and inside BB, and Open inside BB      |
+    *----------------------------------------------------------*/
    
    double bb_high = i.iBB(1,MODE_UPPER);
    double bb_high_i0 = i.iBB(0,MODE_UPPER);
@@ -147,13 +152,16 @@ int  EntrySignal::Std_Dev_Ch3()
    else if( (Close[1] > stdev_C3P && Open[0] > stdev_C3P) && 
             (Close[1] > bb_high   && Open[0] > bb_high_i0)   )
       res = DIRECTIONAL_BUY;
+   else if(Low[1]<= stdev_C3M && Close[1]<stdev_C3M && Close[1]>bb_low)
+      res = REVERSAL_BUY;
    //for sell
    else if(Low[1]<= stdev_C3M && Close[1] > stdev_C3M)
       res = DIRECTIONAL_SELL;
    else if( (Close[1] < stdev_C3M && Open[0] < stdev_C3M) &&
             (Close[1] <bb_low       && Open[0] < bb_low_i0)    )
       res = DIRECTIONAL_SELL;
-   
+   else if(High[1]>= stdev_C3P && Close[1]<stdev_C3P && Close[1]<bb_high)
+      res = REVERSAL_SELL;
    Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C3P[",(string)stdev_C3P,"] stdev_C3M[",(string)stdev_C3M,"]") ;
    return res;
 }

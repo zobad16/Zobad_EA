@@ -12,7 +12,52 @@
 #include "Indicators.mqh"
 
 
-EntrySignal *algo ;
+EntrySignal    *algo ;
+MoneyManagement *mm;
+
+enum LotType
+{
+   MANUAL = 0,
+   AUTO    = 1,
+};
+enum Take_Profit_Type{
+   
+   FIXED=0,
+   VOLATILITY=1,
+   MID_BB=2
+};
+input int              Magic_Number = 1;                 //Magic Number 
+extern string          set="----------Consecutive Losses--------------";//Consecutive Losses Settings
+input bool             useConsecutive =false;            //Use Consecutive Loss
+input int              noConsqLossAllowed=3;             //Consecutive Losses Allowed
+input double           percentReduction=5;               //Lot Size Percent Reduction
+extern string          setLot="-------Lot Setting---------------------";
+input LotType          lotType=MANUAL;                  //Lot Type
+input double           _risk=2.0;                        //%Available Balance::Lot
+
+extern string          order1="-------Order_1--------";  //Order 1 Settings
+bool                   order1Open=false;
+extern string          Strat_Name="Break Out Inverse";           //Strategy Name
+input bool             useStrategy1=true;                //Use Strategy
+input double           LotSize=1.0;                      //Lot Size
+input Take_Profit_Type TP_Type= VOLATILITY;              //Take Profit Type
+input Take_Profit_Type SL_Type= VOLATILITY;              //Stop Loss Type
+input double           TP_Value=25.0;                    //TP Volatility/Fixed(Points)
+input double           SL_Value=12.0;                    //SL Volatility/Fixed(Points)
+input int              _timegap1=31;                     //Order 1 time gap(in mins)
+input bool             _trail1 = false;                  //Use Trailing Stop For Order 1
+input int              _trailPoint1;                     //When to Trail
+input bool             _breakEven1 = false;              //Use jump to breakeven
+input int              _whenJump1=25;                    //When to Jump to Breakeven
+input int              _jumpBy1=6;                       //Points to add after the Breakeven Jump
+input bool             _use_risk_candle1=false;           //Use Risk Management
+input int              _risk_candle1=4;                  //candles to Read for Risk Management
+double                 _highestStop1;
+double                 _lowestStop1;
+input bool             _gapCloseCheck1=false;             //Use Close Candle after a certain time gap
+input int              _whenClose1= 50;                  //Time gap in minutes
+       
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -20,6 +65,7 @@ int OnInit()
   {
 //---
    algo = new EntrySignal();
+   mm   = new MoneyManagement();
 //---
    return(INIT_SUCCEEDED);
   }
@@ -31,6 +77,7 @@ void OnDeinit(const int reason)
 //---
    
    delete(algo);
+   delete(mm);
    
   }
 //+------------------------------------------------------------------+
@@ -43,6 +90,14 @@ void OnTick()
    {
       int ccode=0;
       algo.isSignalCandle(3,ccode);
+      if(ccode == DIRECTIONAL_BUY||ccode==REVERSAL_BUY)
+      {
+        bool res= Buy(3,ccode);
+      }
+      else if(ccode == DIRECTIONAL_SELL||ccode==REVERSAL_SELL)
+      {
+         bool res = Sell(3,ccode);
+      }
       Print("[",ccode,"]");
    }
   }
@@ -62,3 +117,23 @@ bool IsNewBar()
       return true;
      }
   }
+bool Buy(int strat,int rt_Code)
+{
+    string comment = strat+""+rt_Code;
+    double tp =0.0, sl =0.0;
+    double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
+    tp=mm.CalculateTP(OP_BUY,TP_Type,TP_Value);
+    sl = mm.CalculateSL(OP_BUY,SL_Type,SL_Value);
+    mm.PlaceOrder(OP_BUY,lot , tp ,sl , Magic_Number, comment);
+    return false;
+}
+bool Sell(int strat,int rt_Code)
+{
+    string comment = strat+""+rt_Code;
+    double tp =0.0, sl =0.0;
+    double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
+    tp=mm.CalculateTP(OP_SELL,TP_Type,TP_Value);
+    sl = mm.CalculateSL(OP_SELL,SL_Type,SL_Value);
+    mm.PlaceOrder(OP_SELL,lot , tp ,sl , Magic_Number, comment);
+   return false;
+}

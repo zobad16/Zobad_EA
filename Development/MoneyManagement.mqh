@@ -31,10 +31,13 @@ class MoneyManagement
             double CalculatePositionSize(int    type,    int    lot,  double rvalue);
             double CalculateTP(int op,   int    tp_type, double value);
             double CalculateSL(int op,   int    sl_type, double value);
-            int    PlaceOrder (int op,   double lot,     double tp,   double sl);
+            bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
             bool   TrailOrder(int type, int val);
             bool   isOrderOpen();
             bool   JumpToBreakeven(double when, double by);
+            bool   ModifyCheck(bool res);
+            bool   Ticket_Check(int ticket);
+
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -195,10 +198,48 @@ double MoneyManagement:: CalculateSL(int op,   int    sl_type, double value)
     }
     return sl;
 }
-int MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl)
+bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment)
 {
-   return 0;
+   int ticket =0;
+   int Slippage =33;
+   if(op == OP_BUY)
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,comment,Magic_Number);
+   else if(op==OP_SELL)
+      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,Magic_Number);
+   if(Ticket_Check(ticket)==true)
+   {
+      bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
+      if(ModifyCheck(res))return true;
+   }
+   return false;
 }
+bool MoneyManagement::ModifyCheck(bool res)
+  {
+   if(!res)
+     {
+      Print("Error in OrderModify. Error code=",GetLastError());
+      return false;
+     }
+   else
+     {
+      Print("Order modified successfully.");
+      return true;
+     }
+  }
+bool MoneyManagement::Ticket_Check(int ticket)
+  {
+   if(ticket<0)
+     {
+      Print("OrderSend failed with error #",GetLastError());
+      return false;
+     }
+   else
+     {
+      Print("OrderSend placed successfully");
+      return true;
+     }
+   return false;
+  }
 bool MoneyManagement::   TrailOrder(int type, int val){return false;}
 bool MoneyManagement::  isOrderOpen(){return false;}
 bool MoneyManagement::  JumpToBreakeven(double when, double by){return false;}
