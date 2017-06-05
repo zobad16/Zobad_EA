@@ -28,9 +28,9 @@ class EntrySignal
             enum Operations
             {
                DIRECTIONAL_BUY  =  1,
-               DIRECTIONAL_SELL = -1,
+               DIRECTIONAL_SELL =  10,
                REVERSAL_BUY     =  2,
-               REVERSAL_SELL    = -2,
+               REVERSAL_SELL    =  20,
                FAIL =  0,
             };
             enum Linear_Operations
@@ -68,6 +68,7 @@ EntrySignal::EntrySignal()
 //+------------------------------------------------------------------+
 EntrySignal::~EntrySignal()
   {
+   delete(i);
   }
 //+------------------------------------------------------------------+
 

@@ -89,16 +89,18 @@ void OnTick()
    if(IsNewBar())
    {
       int ccode=0;
-      algo.isSignalCandle(3,ccode);
-      if(ccode == DIRECTIONAL_BUY||ccode==REVERSAL_BUY)
+      int tcode=algo.isSignalCandle(3,ccode);
+      if(tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)
       {
-        bool res= Buy(3,ccode);
+        Print("Buy Alert");
+        bool res= Buy(3,tcode);
       }
-      else if(ccode == DIRECTIONAL_SELL||ccode==REVERSAL_SELL)
+      else if(tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)
       {
-         bool res = Sell(3,ccode);
+         Print("Sell Alert");
+         bool res = Sell(3,tcode);
       }
-      Print("[",ccode,"]");
+      
    }
   }
 //+------------------------------------------------------------------+
@@ -122,9 +124,7 @@ bool Buy(int strat,int rt_Code)
     string comment = strat+""+rt_Code;
     double tp =0.0, sl =0.0;
     double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-    tp=mm.CalculateTP(OP_BUY,TP_Type,TP_Value);
-    sl = mm.CalculateSL(OP_BUY,SL_Type,SL_Value);
-    mm.PlaceOrder(OP_BUY,lot , tp ,sl , Magic_Number, comment);
+    mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,comment);
     return false;
 }
 bool Sell(int strat,int rt_Code)
@@ -132,8 +132,6 @@ bool Sell(int strat,int rt_Code)
     string comment = strat+""+rt_Code;
     double tp =0.0, sl =0.0;
     double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-    tp=mm.CalculateTP(OP_SELL,TP_Type,TP_Value);
-    sl = mm.CalculateSL(OP_SELL,SL_Type,SL_Value);
-    mm.PlaceOrder(OP_SELL,lot , tp ,sl , Magic_Number, comment);
+    mm.PlaceOrder(OP_SELL,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,comment);
    return false;
 }

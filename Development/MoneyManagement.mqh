@@ -30,8 +30,9 @@ class MoneyManagement
             int    getPrev_Atr();
             double CalculatePositionSize(int    type,    int    lot,  double rvalue);
             double CalculateTP(int op,   int    tp_type, double value);
-            double CalculateSL(int op,   int    sl_type, double value);
+            double CalculateSL(int op,double op_Price,   int    sl_type, double value);
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
+            bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
             bool   TrailOrder(int type, int val);
             bool   isOrderOpen();
             bool   JumpToBreakeven(double when, double by);
@@ -53,6 +54,7 @@ MoneyManagement::MoneyManagement()
 //+------------------------------------------------------------------+
 MoneyManagement::~MoneyManagement()
   {
+   delete(i);
   }
 //+------------------------------------------------------------------+
 int MoneyManagement::getTicket()
@@ -89,6 +91,7 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
    double point=MarketInfo(Symbol(),MODE_POINT);
    int digit= (int)MarketInfo(Symbol(),MODE_DIGITS);
    double mid=i.iBB(0,MODE_MAIN);//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   RefreshRates();
    //--------------------------------------------
    if(op == OP_BUY)
    {
@@ -99,7 +102,7 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
          Print("Case 0 fix: Tp[",tp,"]");
          break;
         case 1:
-         tp=Ask+(atr*point);
+         tp=Ask+(atr*value);
          Print("Case 1 atr: Tp[",tp,"]");
          break;
         case 2:
@@ -132,41 +135,42 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
    }
    return tp;
 }
-double MoneyManagement:: CalculateSL(int op,   int    sl_type, double value)
+double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, double value)
 {
    double sl =0.0;
    double atr= i.iAtr(0);
    double point=MarketInfo(Symbol(),MODE_POINT);
    int digit= (int)MarketInfo(Symbol(),MODE_DIGITS);
-   double minsl=MarketInfo(Symbol(),MODE_STOPLEVEL);
-   double min_sl=NormalizeDouble(minsl*point,Digits);/*minsl*_point;*/
+   double minsl= MarketInfo(Symbol(),MODE_STOPLEVEL);
+   minsl= NormalizeDouble(minsl*point,Digits);
+   RefreshRates();
    if(op == OP_BUY)
    {
        switch(sl_type)
          {
             case 0:
                sl=Bid -(value*point);
-               Print("Stop Loss [",sl,"]");
+               Print("Case Fix:Stop Loss [",sl,"]");
                break;
             case 1:
                sl=Bid -(atr*value);
-               Print("Stop Loss [",sl,"]");
+               Print("Case Volatility:Stop Loss [",sl,"]");
                break;
              default :
                Print("Error in SL Type. [",sl_type,"]");
                break;
           }
-       if(Bid-sl>=min_sl)
+       if(openPrice-sl>=minsl)
            {
             sl=NormalizeDouble(sl,digit);
             Print("Stop Loss [",sl,"]");
            }
-      if(Bid-sl<min_sl)
+      if(openPrice-sl<minsl)
            {
-            double toAdd=min_sl+(55*point);
-            sl=Bid-toAdd;
+            double toAdd=minsl+(55*point);
+            sl=openPrice-toAdd;
             sl=NormalizeDouble(sl,digit);
-            Print("Stop Loss [",sl,"]");
+            Print("Small Stop Loss [",sl,"]");
            }
    
    }
@@ -176,24 +180,24 @@ double MoneyManagement:: CalculateSL(int op,   int    sl_type, double value)
            {
              case 0:
                   sl=Bid+(value*point);
-                  Print("Stop Loss [",sl,"]");
+                  Print("Case Fix:Stop Loss [",sl,"]");
                   break;
              case 1:
                   sl=Bid+(atr*value);
-                  Print("Stop Loss [",sl,"]");
+                  Print("Case Volatility:Stop Loss [",sl,"]");
                   break;
            }       
-         if(sl-Ask>=minsl )
+         if(sl-openPrice>=minsl )
            {
             sl=NormalizeDouble(sl,digit);
             Print("Stop Loss [",sl,"]");
             }
-         if(sl-Ask<minsl)
+         else if(sl-openPrice<minsl)
            {
-            double toAdd=min_sl+(7.0 *point);
-            sl=Ask+toAdd;
+            double toAdd=minsl+(7.0 *point);
+            sl=openPrice+toAdd;
             sl=NormalizeDouble(sl,digit);
-            Print("Stop Loss [",sl,"]");
+            Print("Small Stop Loss [",sl,"]");
            }
     }
     return sl;
@@ -208,6 +212,26 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
       ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,Magic_Number);
    if(Ticket_Check(ticket)==true)
    {
+      bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
+      if(ModifyCheck(res))return true;
+   }
+   return false;
+}
+bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment)
+{
+   int ticket =0;
+   int Slippage =33;
+   if(op == OP_BUY)
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,comment,Magic_Number);
+   else if(op==OP_SELL)
+      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,Magic_Number);
+   if(Ticket_Check(ticket)==true)
+   {
+      double tp =0.0, sl =0.0;
+      OrderSelect(ticket, SELECT_BY_TICKET,MODE_TRADES);
+      double op_price =OrderOpenPrice();
+      tp = CalculateTP(op,tpType,tpval);
+      sl = CalculateSL(op,op_price,slType,slval);
       bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
       if(ModifyCheck(res))return true;
    }
@@ -243,3 +267,106 @@ bool MoneyManagement::Ticket_Check(int ticket)
 bool MoneyManagement::   TrailOrder(int type, int val){return false;}
 bool MoneyManagement::  isOrderOpen(){return false;}
 bool MoneyManagement::  JumpToBreakeven(double when, double by){return false;}
+/*
+ *bool Trailing_Stop_Revised(bool chck,string comment,int trail)
+  {
+   double point=MarketInfo(Symbol(),MODE_POINT);
+   int    min_stop=(int) MarketInfo(Symbol(),MODE_STOPLEVEL);
+   if(chck==false)
+     {  return false;}
+   else
+     {
+      if(trail<min_stop)
+        {
+         Print("Error Trail.Below Minimum allowed.\nMinimum Allowed[",min_stop,"]");
+         return false;
+        }
+      for(int i=0; i<OrdersTotal(); i++)
+        {
+         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
+           {
+            if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Number)
+              {
+               if(StringFind(OrderComment(),comment,0)!=-1)
+                 {
+
+                  if(OrderType()==OP_BUY)
+                    {
+/*Logic:
+                                if stoploss above order open price
+                                 if current price - sl > trail*point
+                                    then trail by half the trail
+                                 elseif current price minus open price >= trail * point
+                                        and sl below order open price   
+                                    then trail by half the trail
+                                    *//*
+                     if(OrderProfit()>0)
+                       {
+                        if(OrderStopLoss()>OrderOpenPrice())
+                          {
+                           if(Bid-OrderStopLoss()>=trail*point)
+                             {
+                              double trailStop=trail-trail*0.25;
+                              double stop=NormalizeDouble(Bid-trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                              Print("Trail by points[",trailStop,"]");
+                              Trail(stop);
+                             }
+                          }
+                        else if(Bid-OrderOpenPrice()>=trail *point
+                           && OrderStopLoss()<OrderOpenPrice())
+                             {
+                              double trailStop=trail-trail*0.25;
+                              double stop=NormalizeDouble(Bid-trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                              Print("Trail by points[",trailStop,"]");
+                              Trail(stop);
+                             }
+
+                       }
+                     }
+                    else if(OrderType()==OP_SELL)
+                     {
+                        if(OrderProfit()>0)
+                          {
+                           if(OrderStopLoss()<OrderOpenPrice())
+                             {
+                              if(OrderStopLoss()-Ask>=trail*point)
+                                {
+                                 double trailStop=trail-trail*0.25;
+                                 double stop=NormalizeDouble(Ask+trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                                 Print("Trail by points[",trailStop,"]");
+                                 Trail(stop);
+                                }
+                             }
+                            else if(( OrderOpenPrice()-Ask>=trail *point && 
+                              OrderStopLoss()>OrderOpenPrice()) || OrderStopLoss()==0)
+                              {
+                                 double trailStop=trail-trail*0.25;
+                                 double stop=NormalizeDouble(Ask+trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                                 Print("Trail by points[",trailStop,"]");
+                                 Trail(stop);
+                               }
+
+                            }
+                       }
+                     else
+                        return false;
+                    }
+                 }
+              }
+           }
+         return false;
+        } 
+ }       
+
+bool Trail(double sl)
+{
+   Print("Trailing....");
+   bool tckt=OrderModify(OrderTicket(),OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
+   if(!tckt)
+   {
+     Print("Error Trail Modify: Error No[",GetLastError(),"]");
+     return false;
+   }
+   return true;
+}
+ **/
