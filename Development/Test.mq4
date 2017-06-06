@@ -37,7 +37,8 @@ input double           _risk=2.0;                        //%Available Balance::L
 
 extern string          order1="-------Order_1--------";  //Order 1 Settings
 bool                   order1Open=false;
-extern string          Strat_Name="Break Out Inverse";           //Strategy Name
+extern string          Strat_Name="Break Out Inverse";   //Strategy Name
+extern Strat_type      _strat_type = ST_DEV_C2      ;     //Strategy Type      
 input bool             useStrategy1=true;                //Use Strategy
 input double           LotSize=1.0;                      //Lot Size
 input Take_Profit_Type TP_Type= VOLATILITY;              //Take Profit Type
@@ -86,19 +87,21 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
+      int ccode = 0;
+      int tcode = 0;
+      
    if(IsNewBar())
    {
-      int ccode=0;
-      int tcode=algo.isSignalCandle(3,ccode);
-      if(tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)
+       tcode     = algo.isSignalCandle(3,ccode);   
+      if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
       {
         Print("Buy Alert");
-        bool res= Buy(3,tcode);
+        bool res= Buy(_strat_type,tcode);
       }
-      else if(tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)
+      else if((tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
       {
          Print("Sell Alert");
-         bool res = Sell(3,tcode);
+         bool res = Sell(_strat_type,tcode);
       }
       
    }
@@ -121,17 +124,17 @@ bool IsNewBar()
   }
 bool Buy(int strat,int rt_Code)
 {
-    string comment = strat+""+rt_Code;
+    string comment = (string)strat+""+(string)rt_Code;
     double tp =0.0, sl =0.0;
     double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-    mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,comment);
+    mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);
     return false;
 }
 bool Sell(int strat,int rt_Code)
 {
-    string comment = strat+""+rt_Code;
+    string comment = (string)strat+""+(string)rt_Code;
     double tp =0.0, sl =0.0;
     double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-    mm.PlaceOrder(OP_SELL,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,comment);
+    mm.PlaceOrder(OP_SELL,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);
    return false;
 }

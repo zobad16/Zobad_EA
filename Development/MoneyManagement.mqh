@@ -28,7 +28,7 @@ class MoneyManagement
             ~MoneyManagement();
             int    getTicket();
             int    getPrev_Atr();
-            double CalculatePositionSize(int    type,    int    lot,  double rvalue);
+            double CalculatePositionSize(int    type,    double    lot,  double rvalue);
             double CalculateTP(int op,   int    tp_type, double value);
             double CalculateSL(int op,double op_Price,   int    sl_type, double value);
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
@@ -62,7 +62,7 @@ int MoneyManagement::getTicket()
    return 0;
 }
 int MoneyManagement:: getPrev_Atr(){return 0;}
-double MoneyManagement:: CalculatePositionSize(int lot_type, int lot, double risk)
+double MoneyManagement:: CalculatePositionSize(int lot_type, double lot, double risk)
 {
    double lots = lot;
    double minlot = MarketInfo(Symbol(), MODE_MINLOT);
@@ -202,14 +202,14 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
     }
     return sl;
 }
-bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment)
+bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl,int mg ,int comment)
 {
    int ticket =0;
    int Slippage =33;
    if(op == OP_BUY)
-      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,comment,Magic_Number);
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg);
    else if(op==OP_SELL)
-      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,Magic_Number);
+      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
    if(Ticket_Check(ticket)==true)
    {
       bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
@@ -217,23 +217,24 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
    }
    return false;
 }
-bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment)
+bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {
    int ticket =0;
    int Slippage =33;
    if(op == OP_BUY)
-      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,comment,Magic_Number);
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg);
    else if(op==OP_SELL)
-      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,Magic_Number);
+      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
    if(Ticket_Check(ticket)==true)
    {
       double tp =0.0, sl =0.0;
-      OrderSelect(ticket, SELECT_BY_TICKET,MODE_TRADES);
-      double op_price =OrderOpenPrice();
-      tp = CalculateTP(op,tpType,tpval);
-      sl = CalculateSL(op,op_price,slType,slval);
-      bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
-      if(ModifyCheck(res))return true;
+      if(OrderSelect(ticket, SELECT_BY_TICKET,MODE_TRADES)>0){
+         double op_price =OrderOpenPrice();
+         tp = CalculateTP(op,tpType,tpval);
+         sl = CalculateSL(op,op_price,slType,slval);
+         bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment);
+         if(ModifyCheck(res))return true;
+      }
    }
    return false;
 }
@@ -264,7 +265,10 @@ bool MoneyManagement::Ticket_Check(int ticket)
      }
    return false;
   }
-bool MoneyManagement::   TrailOrder(int type, int val){return false;}
+bool MoneyManagement::   TrailOrder(int type, int val){
+
+   return false;
+}
 bool MoneyManagement::  isOrderOpen(){return false;}
 bool MoneyManagement::  JumpToBreakeven(double when, double by){return false;}
 /*

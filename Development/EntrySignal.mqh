@@ -18,7 +18,7 @@ class EntrySignal
 
  
    private:
-            Indicators *i;
+            Indicators *ind;
             bool isSell(int type);
             bool isBuy(int type);
             int  Directional(int op);
@@ -31,7 +31,7 @@ class EntrySignal
                DIRECTIONAL_SELL =  10,
                REVERSAL_BUY     =  2,
                REVERSAL_SELL    =  20,
-               FAIL =  0,
+               FAIL             =  0,
             };
             enum Linear_Operations
             {
@@ -45,30 +45,32 @@ class EntrySignal
             };
             enum Strat_type
             {
-               DIRECTIONAL = 0,
-               REVERSAL    = 1,
-               ST_DEV_C2 =2,
-               ST_DEV_C3 = 3,
+               DIRECTIONAL = 0,  //Directional
+               REVERSAL    = 1,  //Reversal
+               ST_DEV_C2 =2,     //Standard Deviation 2
+               ST_DEV_C3 = 3,    //Standard Deviation 3
                
             };
    public:       
             EntrySignal();
             ~EntrySignal();
             int  isSignalCandle(int type, int& _ccode);
+            int  OrderOperationCode(int magic);
+            bool isOrder(int &ticket,int magic, int opcode);
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
 EntrySignal::EntrySignal()
   {
-    i = new Indicators();
+    ind = new Indicators();
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
 EntrySignal::~EntrySignal()
   {
-   delete(i);
+   delete(ind);
   }
 //+------------------------------------------------------------------+
 
@@ -76,8 +78,8 @@ bool EntrySignal::isSell(int type){return false;}
 bool EntrySignal::isBuy(int type){return false;}
 int  EntrySignal::Directional(int op)
 {
-   double bb_high = i.iBB(1,MODE_UPPER);
-   double bb_low  = i.iBB(1,MODE_LOWER);
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
    int    result  = FAIL;
    if     (Open[1]<bb_high && Close[1]>bb_high ) result = DIRECTIONAL_BUY;
    else if(Open[1]>bb_low && Close[1]< bb_low  ) result = DIRECTIONAL_SELL;
@@ -85,8 +87,8 @@ int  EntrySignal::Directional(int op)
 }
 int  EntrySignal::Reversal(int op)
 {
-   double bb_high = i.iBB(1,MODE_UPPER);
-   double bb_low  = i.iBB(1,MODE_LOWER);
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
    int    result  = FAIL;
    if     (Open[1]<bb_high && Close[1]>bb_high ) result = REVERSAL_BUY;
    else if(Open[1]>bb_low && Close[1]<bb_low   ) result = REVERSAL_SELL;
@@ -105,12 +107,12 @@ int  EntrySignal::Std_Dev_Ch2()
     * Close Outside C2 and outside BB, and Open inside BB |
     *------------------------------------------------------*/
     
-   double bb_high = i.iBB(1,MODE_UPPER);
-   double bb_high_i0 = i.iBB(0,MODE_UPPER);
-   double bb_low  = i.iBB(1,MODE_LOWER);
-   double bb_low_i0 = i.iBB(0,MODE_LOWER);
-   double stdev_C2P= i.iLR(1,C2P);
-   double stdev_C2M= i.iLR(1,C2M); 
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_high_i0 = ind.iBB(0,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
+   double bb_low_i0 = ind.iBB(0,MODE_LOWER);
+   double stdev_C2P= ind.iLR(1,C2P);
+   double stdev_C2M= ind.iLR(1,C2M); 
    int res = FAIL;
    if( (Close[1]>stdev_C2P && Close[1]<bb_high) &&(Open[0]<bb_high_i0) ) res = REVERSAL_SELL;
    else  if( (Close[1]<stdev_C2M && Close[1]>bb_low) && (Open[0]>bb_low_i0) ) res = REVERSAL_BUY;
@@ -139,28 +141,32 @@ int  EntrySignal::Std_Dev_Ch3()
     * Close Outside C2 and inside BB, and Open inside BB      |
     *----------------------------------------------------------*/
    
-   double bb_high = i.iBB(1,MODE_UPPER);
-   double bb_high_i0 = i.iBB(0,MODE_UPPER);
-   double bb_low  = i.iBB(1,MODE_LOWER);
-   double bb_low_i0 = i.iBB(0,MODE_LOWER);
-   double stdev_C3P= i.iLR(1,C3P);
-   double stdev_C3M= i.iLR(1,C3M);
-   
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_high_i0 = ind.iBB(0,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
+   double bb_low_i0 = ind.iBB(0,MODE_LOWER);
+   double stdev_C3P= ind.iLR(1,C3P);
+   double stdev_C2P= ind.iLR(1,C2P);
+   double stdev_C3M= ind.iLR(1,C3M);
+   double stdev_C2M= ind.iLR(1,C2M);
    int res = FAIL;
    //for buy
-   if (High[1] >= stdev_C3P && Close[1] < stdev_C3P)
+   if (High[1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1]>bb_high )
       res = DIRECTIONAL_BUY;
-   else if( (Close[1] > stdev_C3P && Open[0] > stdev_C3P) && 
-            (Close[1] > bb_high   && Open[0] > bb_high_i0)   )
+   else if( (Close[1] > stdev_C3P && Close[1] > bb_high && Open[0] > stdev_C3P) &&  Open[0] > bb_high_i0)   
       res = DIRECTIONAL_BUY;
-   else if(Low[1]<= stdev_C3M && Close[1]<stdev_C3M && Close[1]>bb_low)
+   else if(High[1] >= stdev_C2P && Close[1] < stdev_C2P&& Close[1]<bb_high )
+      return FAIL;
+   else if(Low[1]<= stdev_C3M && Close[1]>stdev_C3M && Close[1]>bb_low)
       res = REVERSAL_BUY;
    //for sell
-   else if(Low[1]<= stdev_C3M && Close[1] > stdev_C3M)
+   else if(Low[1]<= stdev_C3M && Close[1] > stdev_C3M && Close[1]< bb_low)
       res = DIRECTIONAL_SELL;
-   else if( (Close[1] < stdev_C3M && Open[0] < stdev_C3M) &&
-            (Close[1] <bb_low       && Open[0] < bb_low_i0)    )
+   else if( (Close[1] < stdev_C3M && Close[1] <bb_low  && Open[0] < stdev_C3M) &&
+             (Open[0] < bb_low_i0)    )
       res = DIRECTIONAL_SELL;
+   else if(Low[1]<= stdev_C2M && Close[1] > stdev_C2M&& Close[1]>bb_low)
+      return FAIL;
    else if(High[1]>= stdev_C3P && Close[1]<stdev_C3P && Close[1]<bb_high)
       res = REVERSAL_SELL;
    Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C3P[",(string)stdev_C3P,"] stdev_C3M[",(string)stdev_C3M,"]") ;
@@ -178,12 +184,14 @@ int  EntrySignal::isSignalCandle(int type, int& _ccode)
          break;
       case ST_DEV_C2   :
          res = Std_Dev_Ch2();
-         _ccode=(int)""+ST_DEV_C2+""+res;
+         rest=""+(string)ST_DEV_C2+""+(string)res;
+         _ccode = (int)rest;
         // res = (int) rest;
          break;
       case ST_DEV_C3   :
          res = Std_Dev_Ch3();
-         _ccode=(int)""+ST_DEV_C3+""+res;
+         rest=""+(string)ST_DEV_C3+""+(string)res;
+         _ccode = (int)rest;
          //res = (int)rest;
          break;
          
@@ -191,4 +199,42 @@ int  EntrySignal::isSignalCandle(int type, int& _ccode)
    //res= (int)ST_DEV_C2+""+res;
    //Print("res[",res,"]");
    return res;
-}              
+}      
+
+int  EntrySignal::OrderOperationCode(int magic){
+    int total = OrdersTotal();
+    int opCode = FAIL;
+    if(total<1)return FAIL;
+    for(int i=0; i<total;i++)
+    {
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
+      {
+         if((OrderMagicNumber()==magic ) && (OrderSymbol()==Symbol()) )
+         {
+            opCode = (int) OrderComment();
+         }
+       }
+     }
+    return opCode;
+;}
+bool EntrySignal::isOrder(int &ticket ,int magic, int opcode){
+   
+   int total = OrdersTotal();
+   if(total<1)return false;
+   for(int i=0; i<total;i++)
+   {
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
+      {
+         if((OrderMagicNumber()==magic) && OrderSymbol()==Symbol())
+         {
+            if(StringFind(OrderComment(),(string)opcode,0)!=-1)
+            {
+               ticket = OrderTicket();   
+               return true;
+            }
+         }
+       }
+    }
+    return false;
+
+;  }      

@@ -2,6 +2,9 @@
 //|                               Breakout_Inverse_ADX_BalanceV2.mq4 |
 //|                                                    Zobad Mahmood |
 //|                                          zobad.mahmood@gmail.com |
+//|   Includes:                                                      |
+//| 1) Auto Lot                                                      |
+//| 2) Volat Trail                                                   |
 //+------------------------------------------------------------------+
 #property copyright "Zobad Mahmood"
 #property link      "zobad.mahmood@gmail.com"
@@ -50,9 +53,9 @@ bool                   sellIgnore4=false;
 double                 prevAtr=0.0,prevLot1=0.0,prevLot2=0.0,prevLot3=0.0,prevLot4=0.0, prevLot=0.0; 
 input int              Magic_Number = 1;                 //Magic Number 
 extern string          set="----------Consecutive Losses--------------";//Consecutive Losses Settings
-input bool             useConsecutive =false;            //Use Consecutive Loss
-input int              noConsqLossAllowed=3;             //Consecutive Losses Allowed
-input double           percentReduction=5;               //Lot Size Percent Reduction
+input bool             useConsecutive =false;            //Consecutive Loss::Use Consecutive Loss
+input int              noConsqLossAllowed=3;             //Consecutive Loss::Losses Allowed
+input double           percentReduction=5;               //Consecutive Loss::Lot Size Percent Reduction
 extern string          setLot="-------Lot Setting---------------------";
 input l_type           lot_type=MANUAL;                  //Lot Type
 input double           _risk=2.0;                        //%Available Balance::Lot
@@ -72,10 +75,10 @@ input int              _timegap1=31;                     //Time Gap::Order 1 tim
 input bool             _trail1 = false;                  //Trail::Use Trailing Stop
 input _type            _trail_type1 = FIX;               //Trail::Type 
 input double           _trailVolat_1 = 40;               //Trail Volat::Points    
-input int              _trailPoint1;                     //Trail Fixed::When to Trail(Points)
+input int              _trailPoint1;                     //Trail Fixed::Trigger at(Points)
 input bool             _breakEven1 = false;              //Breakeven::Use jump to breakeven
-input int              _whenJump1=25;                    //Breakeven::When to Jump to Breakeven
-input int              _jumpBy1=6;                       //Breakeven::Points to add after Breakeven
+input int              _whenJump1=25;                    //Breakeven::Trigger at(Points)
+input int              _jumpBy1=6;                       //Breakeven::TP
 input bool             _use_risk_candle1=false;          //Risk Management::Use Risk Management
 input int              _risk_candle1=4;                  //Risk Management::Candles to Read
 double                 _highestStop1;
@@ -99,10 +102,10 @@ input int              _timegap1v2=31;                     //Time Gap::Order 1v2
 input bool             _trail1v2 = false;                  //Trail::Use Trailing Stop
 input _type            _trail_type1v2 = FIX;               //Trail::Type
 input double           _trailVolat_2 = 40;                 //Trail Volat::Points  
-input int              _trailPoint1v2;                     //Trail::When to Trail(Points)
+input int              _trailPoint1v2;                     //Trail::Trigger at(Points)
 input bool             _breakEven1v2 = false;              //Breakeven::Use jump to breakeven
-input int              _whenJump1v2=25;                    //Breakeven::When to Jump to Breakeven
-input int              _jumpBy1v2=6;                       //Breakeven::Points to add after Breakeven
+input int              _whenJump1v2=25;                    //Breakeven::Trigger at(Points)
+input int              _jumpBy1v2=6;                       //Breakeven::TP
 input bool             _use_risk_candle1v2=true;           //Risk Management::Use Risk Management
 input int              _risk_candle1v2=4;                  //Risk Management::Candles to Read 
 double                 _highestStop1v2;
@@ -194,23 +197,23 @@ input int              increaseLLotBy  = 2;               //Lot Size ratio to in
 input int              decreaseLLotBy  = 2;               //Lot Size ratio to decrease each leg by(in multiples)
 
 extern string          bb_Set="--Bollinger Band Settings--"; //Bollinger Band Settings
-input ENUM_TIMEFRAMES  BB_Chart_Timeframe= PERIOD_CURRENT;  //Bollinger Band Chart Time 
-input int              BB_Period=14;                    //Bollinger Band Period
+input ENUM_TIMEFRAMES  BB_Chart_Timeframe= PERIOD_CURRENT;  //Bollinger Band::Chart Time 
+input int              BB_Period=14;                    //Bollinger Band::Period
 
 extern string          atr_Set="--ATR Settings--";      //Order 3 Settings
-input int              ATR_Period=14;                   //ATR Period 
-input ENUM_TIMEFRAMES  ATR_Charts_Period = PERIOD_CURRENT;  //ATR Chart Time
+input int              ATR_Period=14;                   //ATR::Period 
+input ENUM_TIMEFRAMES  ATR_Charts_Period = PERIOD_CURRENT;  //ATR::Chart Time
 
 extern string          adx_Set="--ADX Settings--";      //ADX Settings
-input bool             use_ADX=false;                    //Use ADX
+input bool             use_ADX=false;                    //ADX::Use ADX
 input ENUM_TIMEFRAMES  adx_Chart_Timeframe= PERIOD_CURRENT;  //ADX::Chart Time 
 input int              adx_Period=14;                    //ADX::Period 
 input ENUM_APPLIED_PRICE adx_App_Price;                  //ADX::Applied Price
 input double           adx_Entry_Range=60;               //ADX::Minimum Entry Range
 input int              Slippage=33;                     //Slippage
 extern string          risk_Set="--Risk Management Settings--";// Risk Management settings 
-input bool             use_RiskManagement=false;        //Use Risk Management
-input double           Risk_Management;                 //Risk Management % from equity 
+input bool             use_RiskManagement=false;        //Risk Management::Use Risk Management
+input double           Risk_Management;                 //Risk Management::% from equity 
 int count_b, count_s;
 double _point;
 double Mid_Price=0.0;
