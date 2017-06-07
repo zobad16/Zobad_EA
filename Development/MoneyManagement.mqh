@@ -17,6 +17,8 @@ class MoneyManagement
             int    _ticket;
             double _prev_Atr;
             Indicators *i;
+            bool Trail(double sl);
+            bool Trail_Volatility(double prevatr, double trailV);
             enum position_Type
             {
                _AUTO   = 1,
@@ -33,12 +35,12 @@ class MoneyManagement
             double CalculateSL(int op,double op_Price,   int    sl_type, double value);
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
-            bool   TrailOrder(int type, int val);
+            bool   TrailOrder(int type, double val, int magic);
             bool   isOrderOpen();
             bool   JumpToBreakeven(double when, double by);
             bool   ModifyCheck(bool res);
             bool   Ticket_Check(int ticket);
-
+           
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -265,8 +267,99 @@ bool MoneyManagement::Ticket_Check(int ticket)
      }
    return false;
   }
-bool MoneyManagement::   TrailOrder(int type, int val){
-
+bool MoneyManagement::   TrailOrder(int type, double val, int magic_Number){
+   double point=MarketInfo(Symbol(),MODE_POINT);
+   int    min_stop=(int) MarketInfo(Symbol(),MODE_STOPLEVEL);
+   for(int ii=0; ii<OrdersTotal(); ii++)
+        {
+         if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)==true)
+           {
+            if(OrderSymbol()==Symbol() && OrderMagicNumber()==magic_Number)
+              {
+                 if(OrderProfit()>0)
+                 {
+                     if(OrderType()==OP_BUY)
+                     {                     
+                        if(OrderStopLoss()>OrderOpenPrice())
+                        {
+                           if(Bid-OrderStopLoss()>=val*point)
+                           {
+                              double trailStop=val-val*0.25;
+                              double stop=NormalizeDouble(Bid-trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                              Print("Trail by points[",trailStop,"]");
+                              Trail(stop);
+                           }
+                        }
+                        else if(Bid-OrderOpenPrice()>=val *point
+                              && OrderStopLoss()<OrderOpenPrice())
+                        {
+                           double trailStop=val-val*0.25;
+                           double stop=NormalizeDouble(Bid-trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                           Print("Trail by points[",trailStop,"]");
+                           Trail(stop);
+                        }                       
+                      }
+                      else if(OrderType()==OP_SELL)
+                      {
+                        if(OrderStopLoss()<OrderOpenPrice())
+                        {
+                           if(OrderStopLoss()-Ask>=val*point)
+                           {
+                              double trailStop=val-val*0.25;
+                              double stop=NormalizeDouble(Ask+trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                              Print("Trail by points[",trailStop,"]");
+                              Trail(stop);
+                           }
+                        }
+                        else if(( OrderOpenPrice()-Ask>=val *point && 
+                                 OrderStopLoss()>OrderOpenPrice()) || OrderStopLoss()==0)
+                        {
+                            double trailStop=val-val*0.25;
+                            double stop=NormalizeDouble(Ask+trailStop *point,(int)MarketInfo(Symbol(),MODE_DIGITS));
+                            Print("Trail by points[",trailStop,"]");
+                            Trail(stop);
+                        }
+                     }
+                 }
+                     else
+                        return false;
+                    
+              }
+          }
+         }
+   return false;
+}
+bool MoneyManagement::Trail_Volatility(double prevatr, double trailV)
+{
+   double stop =NormalizeDouble(prevatr + (trailV*Point),Digits);
+   Print("Stop[",stop,"]");   
+   int total = OrdersTotal();
+   for(int ii = 0; ii < total; ii++)
+   {
+      if(OrderSelect(ii, SELECT_BY_POS, MODE_TRADES) == true)
+      {
+         if(OrderType()==OP_BUY)
+         {
+            if(Bid - OrderOpenPrice() > stop)
+            {
+              if(OrderStopLoss() < Bid - stop)
+              {
+                 Trail(Bid-prevatr);
+              }
+            }
+         }
+         if(OrderType()==OP_SELL)
+         {
+            if((OrderOpenPrice()-Ask)> (stop))
+            {
+               if((OrderStopLoss()>(Ask+stop))||(OrderStopLoss()==0))
+               {
+                  Trail(Ask+prevatr);
+               }
+            }      
+         }
+      }
+   }
    return false;
 }
 bool MoneyManagement::  isOrderOpen(){return false;}
@@ -361,8 +454,8 @@ bool MoneyManagement::  JumpToBreakeven(double when, double by){return false;}
          return false;
         } 
  }       
-
-bool Trail(double sl)
+**/
+bool MoneyManagement:: Trail(double sl)
 {
    Print("Trailing....");
    bool tckt=OrderModify(OrderTicket(),OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
@@ -373,4 +466,4 @@ bool Trail(double sl)
    }
    return true;
 }
- **/
+ 

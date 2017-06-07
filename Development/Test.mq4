@@ -26,6 +26,11 @@ enum Take_Profit_Type{
    VOLATILITY=1,
    MID_BB=2
 };
+enum _type
+{
+   FIX    = 0,      //Fixed
+   VOLAT  = 1       //Volatility
+};
 input int              Magic_Number = 1;                 //Magic Number 
 extern string          set="----------Consecutive Losses--------------";//Consecutive Losses Settings
 input bool             useConsecutive =false;            //Use Consecutive Loss
@@ -34,29 +39,28 @@ input double           percentReduction=5;               //Lot Size Percent Redu
 extern string          setLot="-------Lot Setting---------------------";
 input LotType          lotType=MANUAL;                  //Lot Type
 input double           _risk=2.0;                        //%Available Balance::Lot
-
+input double           LotSize=1.0;                      //Position::Lot Size(Manual)
 extern string          order1="-------Order_1--------";  //Order 1 Settings
 bool                   order1Open=false;
-extern string          Strat_Name="Break Out Inverse";   //Strategy Name
-extern Strat_type      _strat_type = ST_DEV_C2      ;     //Strategy Type      
-input bool             useStrategy1=true;                //Use Strategy
-input double           LotSize=1.0;                      //Lot Size
-input Take_Profit_Type TP_Type= VOLATILITY;              //Take Profit Type
-input Take_Profit_Type SL_Type= VOLATILITY;              //Stop Loss Type
-input double           TP_Value=25.0;                    //TP Volatility/Fixed(Points)
-input double           SL_Value=12.0;                    //SL Volatility/Fixed(Points)
+extern Strat_type      _strat_type = ST_DEV_C2      ;     //Strategy:: Type      
+input bool             useStrategy1=true;                //Strategy::Use Strategy
+input Take_Profit_Type TP_Type= VOLATILITY;              //TP:: Type
+input Take_Profit_Type SL_Type= VOLATILITY;              //SL:: Type
+input double           TP_Value=25.0;                    //TP:: Volatility/Fixed(Points)
+input double           SL_Value=12.0;                    //SL:: Volatility/Fixed(Points)
 input int              _timegap1=31;                     //Order 1 time gap(in mins)
-input bool             _trail1 = false;                  //Use Trailing Stop For Order 1
-input int              _trailPoint1;                     //When to Trail
-input bool             _breakEven1 = false;              //Use jump to breakeven
-input int              _whenJump1=25;                    //When to Jump to Breakeven
-input int              _jumpBy1=6;                       //Points to add after the Breakeven Jump
-input bool             _use_risk_candle1=false;           //Use Risk Management
-input int              _risk_candle1=4;                  //candles to Read for Risk Management
+input bool             useTrail = false;                 //Trail::Use Trail
+input _type            _trail_type1 = FIX;               //Trail::Type 
+input double           _trailBy = 40;                    //Trail Volat/Fixed::Trail by
+input bool             _breakEven1 = false;              //Breakeven::Use jump to breakeven
+input int              _whenJump1=25;                    //Breakeven::When to Jump
+input int              _jumpBy1=6;                       //Breakeven::Points to add after Jump
+input bool             _use_risk_candle1=false;           //Risk Management:: Use Risk Management
+input int              _risk_candle1=4;                  //Risk Management::Number of Candles to read
 double                 _highestStop1;
 double                 _lowestStop1;
-input bool             _gapCloseCheck1=false;             //Use Close Candle after a certain time gap
-input int              _whenClose1= 50;                  //Time gap in minutes
+input bool             _gapCloseCheck1=false;             //Close Candle::Use time gap
+input int              _whenClose1= 50;                  //Close Candel::Time gap in minutes
        
 
 //+------------------------------------------------------------------+
@@ -87,12 +91,15 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
-      int ccode = 0;
-      int tcode = 0;
       
+   if(algo.OrderOperationCode(Magic_Number)!=FAIL && useTrail==true)
+   {
+      mm.TrailOrder(_trail_type1,_trailBy,Magic_Number);
+   }   
    if(IsNewBar())
    {
-       tcode     = algo.isSignalCandle(3,ccode);   
+      int ccode = FAIL;
+      int tcode = algo.isSignalCandle(_strat_type,ccode);   
       if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
       {
         Print("Buy Alert");
