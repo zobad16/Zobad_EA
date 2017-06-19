@@ -32,6 +32,7 @@ enum _type
    VOLAT  = 1       //Volatility
 };
 input int              Magic_Number = 1;                 //Magic Number 
+input bool             useLegacy    = false;             //Use Legacy Entry Signal
 extern string          set="----------Consecutive Losses--------------";//Consecutive Losses Settings
 input bool             useConsecutive =false;            //Use Consecutive Loss
 input int              noConsqLossAllowed=3;             //Consecutive Losses Allowed
@@ -99,7 +100,9 @@ void OnTick()
    if(IsNewBar())
    {
       int ccode = FAIL;
-      int tcode = algo.isSignalCandle(_strat_type,ccode);   
+      int tcode = FAIL;
+      if(useLegacy == true)       tcode = algo.isSignalCandle(_strat_type,ccode);
+      else if(useLegacy == false) tcode = algo.isSignalCandleRev(_strat_type,ccode);   
       if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
       {
         Print("Buy Alert");

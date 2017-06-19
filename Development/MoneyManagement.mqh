@@ -19,6 +19,7 @@ class MoneyManagement
             Indicators *i;
             bool Trail(double sl);
             bool Trail_Volatility(double prevatr, double trailV);
+            bool JumpToBreakeven(int tickt, double sl);
             enum position_Type
             {
                _AUTO   = 1,
@@ -37,7 +38,7 @@ class MoneyManagement
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
             bool   TrailOrder(int type, double val, int magic);
             bool   isOrderOpen();
-            bool   JumpToBreakeven(double when, double by);
+            bool   JumpToBreakeven(int magic,string comment,double when, double by);
             bool   ModifyCheck(bool res);
             bool   Ticket_Check(int ticket);
            
@@ -363,7 +364,110 @@ bool MoneyManagement::Trail_Volatility(double prevatr, double trailV)
    return false;
 }
 bool MoneyManagement::  isOrderOpen(){return false;}
-bool MoneyManagement::  JumpToBreakeven(double when, double by){return false;}
+bool MoneyManagement::  JumpToBreakeven(int magic,string comment,double when, double by)
+{   
+   double point = MarketInfo(Symbol(), MODE_POINT);
+   int digit = (int)MarketInfo(Symbol(),MODE_DIGITS);
+   for (int ii= 0; ii< OrdersTotal(); ii++)
+   {
+      if(OrderSelect(ii, SELECT_BY_POS, MODE_TRADES) == true)
+         {     
+            if( OrderSymbol() == Symbol() && OrderMagicNumber() == magic)
+               {
+                  if(StringFind(OrderComment(), comment,0)!= -1)
+                     {
+                        if(OrderType() == OP_BUY) 
+                           {   
+                           //if stoploss below open price then ignore
+                           //else if 
+                              if(OrderStopLoss()< OrderOpenPrice())
+                              {                        
+                                 if( Bid-OrderOpenPrice() >= when *point)
+                                    {
+                                       Print("Buy Jump to Breakeven");
+                                       double sl= NormalizeDouble(OrderOpenPrice()+ by *point,digit);
+                                       JumpToBreakeven(OrderTicket(), sl);
+                                    }
+                              }                              
+                           }   
+                         else if(OrderType() == OP_SELL) 
+                           {
+                              if(OrderStopLoss()> OrderOpenPrice())
+                              {
+                                 if( OrderOpenPrice() - Ask >= when *point)
+                                    {
+                                       Print("Sell Jump to Breakeven");
+                                       double sl= NormalizeDouble(OrderOpenPrice() - by *point,digit);
+                                       JumpToBreakeven(OrderTicket(),sl);
+                                    }
+                              }
+                                                 
+                            } 
+                     }           
+                }
+         }
+   }
+   return false;
+}
+bool MoneyManagement::JumpToBreakeven(int tickt, double sl)
+{
+   bool tckt= OrderModify(tickt, OrderOpenPrice(),sl,OrderTakeProfit(),0,clrNONE);
+   if(!tckt)
+      {
+         Print("Error Trail Modify: Error No[",GetLastError(),"]"); 
+         return false;
+      }
+   return true;
+
+}
+/*bool JumpToBreakeven(bool check,string comment, int when, int by)
+{
+   double point = MarketInfo(Symbol(), MODE_POINT);
+   int digit = (int)MarketInfo(Symbol(),MODE_DIGITS);
+   if(check == false)
+      return false;
+   for (int i= 0; i< OrdersTotal(); i++)
+   {
+      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES) == true)
+         {     
+            if( OrderSymbol() == Symbol() && OrderMagicNumber() == Magic_Number )
+               {
+                  if(StringFind(OrderComment(), comment,0)!= -1)
+                     {
+                        if(OrderType() == OP_BUY) 
+                           {   
+                           //if stoploss below open price then ignore
+                           //else if 
+                              if(OrderStopLoss()< OrderOpenPrice())
+                              {                        
+                                 if( Bid-OrderOpenPrice() >= when *point)
+                                    {
+                                       Print("Buy Jump to Breakeven");
+                                       double sl= NormalizeDouble(OrderOpenPrice()+ by *point,digit);
+                                       JumpToBreakeven(OrderTicket(), sl);
+                                    }
+                              }                              
+                           }   
+                         else if(OrderType() == OP_SELL) 
+                           {
+                              if(OrderStopLoss()> OrderOpenPrice())
+                              {
+                                 if( OrderOpenPrice() - Ask >= when *point)
+                                    {
+                                       Print("Sell Jump to Breakeven");
+                                       double sl= NormalizeDouble(OrderOpenPrice() - by *point,digit);
+                                       JumpToBreakeven(OrderTicket(),sl);
+                                    }
+                              }
+                                                 
+                            } 
+                     }           
+                }
+         }
+   }
+   return false;
+
+}*/
 /*
  *bool Trailing_Stop_Revised(bool chck,string comment,int trail)
   {

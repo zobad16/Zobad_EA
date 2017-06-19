@@ -25,6 +25,9 @@ class EntrySignal
             int  Reversal(int op);
             int  Std_Dev_Ch2();
             int  Std_Dev_Ch3();
+            int  Std_Dev_All();
+            int  Revised_Std_Dev_Ch2();
+            int  Revised_Std_Dev_Ch3();
             enum Operations
             {
                DIRECTIONAL_BUY  =  1,
@@ -55,6 +58,7 @@ class EntrySignal
             EntrySignal();
             ~EntrySignal();
             int  isSignalCandle(int type, int& _ccode);
+            int  isSignalCandleRev(int type, int& _ccode);
             int  OrderOperationCode(int magic);
             bool isOrder(int &ticket,int magic, int opcode);
 };
@@ -120,6 +124,7 @@ int  EntrySignal::Std_Dev_Ch2()
             (Close[1] < stdev_C2M && Close[1] < bb_low  && Open[0] < bb_low_i0 )   ){
              res = FAIL;
             }
+   else res = FAIL;
    Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
    return res;
 
@@ -172,7 +177,83 @@ int  EntrySignal::Std_Dev_Ch3()
    Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C3P[",(string)stdev_C3P,"] stdev_C3M[",(string)stdev_C3M,"]") ;
    return res;
 }
-int  EntrySignal::isSignalCandle(int type, int& _ccode)
+/**********************************************************************************************************************************
+ * Logic
+ * --------
+ * Trade Reversal:
+ *	   When Market Closes Outside Channel 2 but inside Bollinger Band, and then opens inside Bollinger Band place Reversal Order.
+ * Trade Directional:
+ *    If Close Outside BB and within Channel 2, Place Directional Order. Only Directional Order.
+ * Don't Trade if:
+ * 	When Market Closes Outside Channel 2 and outside Bollinger Band, and then Opens inside Bollinger Band, Don't Trade. 
+ *
+ **********************************************************************************************************************************/
+int EntrySignal :: Revised_Std_Dev_Ch2()
+{
+     
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_high_i0 = ind.iBB(0,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
+   double bb_low_i0 = ind.iBB(0,MODE_LOWER);
+   double stdev_C2P= ind.iLR(1,C2P);
+   double stdev_C2M= ind.iLR(1,C2M); 
+   int res = FAIL;
+   if( (Close[1]>stdev_C2P && Close[1]<bb_high) &&(Open[0]<bb_high_i0) ) res = REVERSAL_SELL;
+   else  if( (Close[1]<stdev_C2M && Close[1]>bb_low) && (Open[0]>bb_low_i0) ) res = REVERSAL_BUY;
+   else if((Close[1]>bb_high) && (Close[1]<stdev_C2P && Close[1]>stdev_C2M )) res = DIRECTIONAL_BUY;
+   else if((Close[1]<bb_low) &&  (Close[1]>stdev_C2M && Close[1]<stdev_C2P))  res = DIRECTIONAL_SELL;  
+   
+   else if( (Close[1] > stdev_C2P && Close[1] > bb_high && Open[0] > bb_high_i0)||
+            (Close[1] < stdev_C2M && Close[1] < bb_low  && Open[0] < bb_low_i0 )   ){
+             res = FAIL;
+            }
+   else res = FAIL;
+   Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
+   return res;
+}
+/************************************************************************************************************************************************
+ * Logic
+ *--------
+ * Trade Directional:                                  
+ * 	If Close Outside BB and within Channel 2, Place Directional Order. Only Directional Order.        
+ * Trade Reversal :
+ *  	When Market Crosses Channel 3 and Closes inside both Channel 3 and Bollinger Band place Reversal Order.
+ *  	When Market Crosses Channel 3 and Close inside Channel 3 but outside Bollinger Band place Reversal Order. 
+ *  	When Market Closes Outside Channel 3 and Bollinger Band and then opens again outside Channel 3 and Bollinger B and place Reversal Order.        
+ *  	When Closes Outside Channel 3 place Reversal Order
+ * Don't Trade:
+ *	   When Market Closes Outside Channel 2 but inside Bollinger Band, and then Opens inside Bollinger Band.
+ *
+ ************************************************************************************************************************************************/
+int EntrySignal :: Revised_Std_Dev_Ch3()
+{
+   double bb_high = ind.iBB(1,MODE_UPPER);
+   double bb_high_i0 = ind.iBB(0,MODE_UPPER);
+   double bb_low  = ind.iBB(1,MODE_LOWER);
+   double bb_low_i0 = ind.iBB(0,MODE_LOWER);
+   double stdev_C3P= ind.iLR(1,C3P);
+   double stdev_C2P= ind.iLR(1,C2P);
+   double stdev_C3M= ind.iLR(1,C3M);
+   double stdev_C2M= ind.iLR(1,C2M); 
+   int res = FAIL;
+   if((Close[1]>bb_high) && (Close[1]<stdev_C2P && Close[1]>stdev_C2M ))      res = DIRECTIONAL_BUY;
+   else if((Close[1]<bb_low) &&  (Close[1]>stdev_C2M && Close[1]<stdev_C2P))  res = DIRECTIONAL_SELL;
+   else if (Close[1]> stdev_C3P )  res = REVERSAL_SELL;
+   else if (Close[1]<stdev_C3M  )  res = REVERSAL_BUY;
+   else if (High[1]>= stdev_C3P && Close[1]<stdev_C3P && Close[1]<bb_high)    res = REVERSAL_SELL;
+   else if (Low[1] <= stdev_C3M  && Close[1]>stdev_C3M && Close[1]>bb_low)    res = REVERSAL_BUY ; 
+   else if (High[1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1]>bb_high) res = REVERSAL_SELL;
+   else if(Low[1]<= stdev_C3M && Close[1] > stdev_C3M && Close[1]< bb_low)    res = REVERSAL_BUY;   
+   
+   else if(High[1] >= stdev_C2P && Close[1] < stdev_C2P&& Close[1]<bb_high )
+      return FAIL;
+   //for sell
+   else if(Low[1]<= stdev_C2M && Close[1] > stdev_C2M&& Close[1]>bb_low)
+      return FAIL;
+   
+   return FAIL;
+}
+int EntrySignal :: isSignalCandle(int type, int& _ccode)
 {   
    int res =FAIL;
    string rest="";
@@ -200,7 +281,34 @@ int  EntrySignal::isSignalCandle(int type, int& _ccode)
    //Print("res[",res,"]");
    return res;
 }      
-
+int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
+{   
+   int res =FAIL;
+   string rest="";
+   switch(type)
+   {
+      case DIRECTIONAL :
+         break;
+      case REVERSAL    :
+         break;
+      case ST_DEV_C2   :
+         res = Revised_Std_Dev_Ch2();
+         rest=""+(string)ST_DEV_C2+""+(string)res;
+         _ccode = (int)rest;
+        // res = (int) rest;
+         break;
+      case ST_DEV_C3   :
+         res = Revised_Std_Dev_Ch3();
+         rest=""+(string)ST_DEV_C3+""+(string)res;
+         _ccode = (int)rest;
+         //res = (int)rest;
+         break;
+         
+   }
+   //res= (int)ST_DEV_C2+""+res;
+   //Print("res[",res,"]");
+   return res;
+} 
 int  EntrySignal::OrderOperationCode(int magic){
     int total = OrdersTotal();
     int opCode = FAIL;
