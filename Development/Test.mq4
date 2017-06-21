@@ -137,12 +137,12 @@ void OnTick()
          tcode = algo.isSignalCandleRev(_strat_type,ccode);   
          if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
          {           
-           Print("Buy Alert");
+           Print("Buy Alert Direction Code[",tcode,"]");
            bool res = Revised_Buy(_strat_type,tcode);
          }
          else if((tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
          {     
-           Print("Sell Alert");
+           Print("Sell Alert Direction Code[",tcode,"]");
            bool res = Revised_Sell(_strat_type,tcode);
          }         
       }

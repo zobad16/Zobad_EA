@@ -28,6 +28,8 @@ class EntrySignal
             int  Std_Dev_All();
             int  Revised_Std_Dev_Ch2();
             int  Revised_Std_Dev_Ch3();
+            int  Revised_Reversal()   ;
+            int  Revised_Directional()   ;
             enum Operations
             {
                DIRECTIONAL_BUY  =  1110,
@@ -197,8 +199,8 @@ int EntrySignal :: Revised_Std_Dev_Ch2()
    if(stdev_C2P == 0.0 || stdev_C2M == 0.0) return FAIL_ERR                                                      ;
    if     ( (Close[1] > stdev_C2P &&  Close[1] < bb_high)  &&(Open [0] < bb_high_i0)) res = REVERSAL_SELL    ;
    else if( (Close[1] < stdev_C2M &&  Close[1] > bb_low)   &&(Open [0] > bb_low_i0 )) res = REVERSAL_BUY     ;
-   else if( (Close[1] > bb_high)  && (Close[1] < stdev_C2P && Close[1] > stdev_C2M )) res = DIRECTIONAL_BUY  ;
-   else if( (Close[1] < bb_low)   && (Close[1] > stdev_C2M && Close[1] < stdev_C2P )) res = DIRECTIONAL_SELL ;     
+   else if( (Close[1] > bb_high)  &&  Close[1] < stdev_C2P ) res = DIRECTIONAL_BUY  ;
+   else if( (Close[1] < bb_low)   &&  Close[1] > stdev_C2M ) res = DIRECTIONAL_SELL ;     
    else if( (Close[1] > stdev_C2P &&  Close[1] > bb_high   && Open [0] > bb_high_i0)||
             (Close[1] < stdev_C2M &&  Close[1] < bb_low    && Open [0] < bb_low_i0 )) res = FAIL             ;
    else                                                                               res = FAIL             ;
@@ -248,6 +250,40 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
    
    return res;
+}
+int EntrySignal :: Revised_Directional()
+{
+   double bb_high    =  ind.iBB(1,MODE_UPPER)                                                                ;
+   double bb_high_i0 =  ind.iBB(0,MODE_UPPER)                                                                ;
+   double bb_low     =  ind.iBB(1,MODE_LOWER)                                                                ;
+   double bb_low_i0  =  ind.iBB(0,MODE_LOWER)                                                                ;
+   double stdev_C2P  =  ind.iLR(1,C2P)                                                                       ;
+   double stdev_C2M  =  ind.iLR(1,C2M)                                                                       ; 
+   int    res        =  FAIL                                                                                 ;
+   if(      (Close[1] > bb_high)  &&  Close[1] < stdev_C2P ) res = DIRECTIONAL_BUY                           ;
+   else if( (Close[1] < bb_low)   &&  Close[1] > stdev_C2M ) res = DIRECTIONAL_SELL                          ; 
+   return res                                                                                                ;
+}
+int EntrySignal :: Revised_Reversal()
+{
+   double bb_high    =  ind.iBB(1,MODE_UPPER)                                                                ;
+   double bb_high_i0 =  ind.iBB(0,MODE_UPPER)                                                                ;
+   double bb_low     =  ind.iBB(1,MODE_LOWER)                                                                ;
+   double bb_low_i0  =  ind.iBB(0,MODE_LOWER)                                                                ;
+   double stdev_C3P  =  ind.iLR(1,C3P)                                                                       ;
+   double stdev_C2P  =  ind.iLR(1,C2P)                                                                       ;
+   double stdev_C3M  =  ind.iLR(1,C3M)                                                                       ;
+   double stdev_C2M  =  ind.iLR(1,C2M)                                                                       ; 
+   int    res        =  FAIL                                                                                 ;          
+   if      (Close[1] >  stdev_C3P )                                                  res =  REVERSAL_SELL    ;
+   else if (Close[1] <  stdev_C3M )                                                  res =  REVERSAL_BUY     ;
+   else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] < bb_high)     res =  REVERSAL_SELL    ;
+   else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] > bb_low )     res =  REVERSAL_BUY     ; 
+   else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] > bb_high)     res =  REVERSAL_SELL    ;
+   else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] < bb_low )     res =  REVERSAL_BUY     ;                                                                              
+   else if (Close[1] > stdev_C2P &&  Close[1] < bb_high  && Open [0] < bb_high_i0)  res = REVERSAL_SELL      ;
+   else if( (Close[1] < stdev_C2M &&  Close[1] > bb_low)   &&(Open [0] > bb_low_i0 )) res = REVERSAL_BUY     ;
+   return res                                                                                                ;
 }
 int EntrySignal :: isSignalCandle(int type, int& _ccode)
 {   
@@ -306,16 +342,9 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
    switch(type)
    {
       case DIRECTIONAL :
-         res  = Revised_Std_Dev_Ch3()                  ;
-         res2 = Revised_Std_Dev_Ch2()                  ;
-         if(res == DIRECTIONAL_BUY || res == DIRECTIONAL_SELL){
-            rest = ""+(string)ST_DEV_C3+""+(string)res ;
-            _ccode = (int) rest                        ;
-         }
-         else if(res2 == DIRECTIONAL_BUY || res2 == DIRECTIONAL_SELL){
-            rest = ""+(string)ST_DEV_C2+""+(string)res ;
-            _ccode = (int) rest                        ;
-         }
+         res  = Revised_Directional()                     ;
+         rest=""+(string)ST_DEV_C2+""+(string)res      ;
+         _ccode = (int)rest                            ;
          break                                         ;
       case REVERSAL    :
          res  = Revised_Std_Dev_Ch3()                  ;
