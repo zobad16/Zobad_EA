@@ -38,21 +38,25 @@ input bool             useConsecutive     = false     ;             //Use Consec
 input int              noConsqLossAllowed = 3         ;             //Consecutive Losses Allowed
 input double           percentReduction   = 5         ;             //Lot Size Percent Reduction
 extern string          setLot="-------Lot Setting---------------------";
-input LotType          lotType            = MANUAL    ;             //Lot Type
+input LotType          lotType            = AUTO      ;             //Lot Type
 input double           _risk              = 2.0       ;             //%Available Balance::Lot
-input double           LotSize            = 1.0       ;             //Position::Lot Size(Manual)
-extern string          order1="-------Order--------";             //Order 1 Settings
+input double           LotSize            = 0.5       ;             //Position::Lot Size(Manual)
+extern string          order1="-------Order--------"  ;             //Order 1 Settings
 bool                   order1Open         =  false    ; 
-extern Strat_type      _strat_type        = ST_DEV_C2 ;             //Strategy:: Type      
+extern Strat_type      _strat_type        = DIRECTIONAL ;             //Strategy:: Type      
 input bool             useStrategy1       = true      ;             //Strategy::Use Strategy
+extern string          reversalSet="-------Reversal Strategy TP/SL--------";             //Reversal TP and SL Settings
+
 input Take_Profit_Type TP_Type            = VOLATILITY;             //Reversal TP:: Type
 input Take_Profit_Type SL_Type            = VOLATILITY;             //Reversal SL:: Type
-input double           TP_Value           = 25.0      ;             //Reversal TP:: Volatility/Fixed(Points)
-input double           SL_Value           = 12.0      ;             //Reversal SL:: Volatility/Fixed(Points)
-input Take_Profit_Type TP_Type1            = VOLATILITY;             //Directional TP:: Type
-input Take_Profit_Type SL_Type1            = VOLATILITY;             //Directional SL:: Type
-input double           TP_Value1           = 25.0      ;             //Directional TP:: Volatility/Fixed(Points)
-input double           SL_Value1           = 12.0      ;             //Directional SL:: Volatility/Fixed(Points)
+input double           TP_Value           =  4.5      ;             //Reversal TP:: Volatility/Fixed(Points)
+input double           SL_Value           =  1.5      ;             //Reversal SL:: Volatility/Fixed(Points)
+
+extern string          directionSet="-------Directional Strategy TP/SL--------";             //Directional TP/SL Settings
+input Take_Profit_Type TP_Type1           = VOLATILITY;             //Directional TP:: Type
+input Take_Profit_Type SL_Type1           = VOLATILITY;             //Directional SL:: Type
+input double           TP_Value1          =  3.5      ;             //Directional TP:: Volatility/Fixed(Points)
+input double           SL_Value1          =  1.5      ;             //Directional SL:: Volatility/Fixed(Points)
 
 input int              _timegap1          = 31        ;             //Order 1 time gap(in mins)
 input bool             useTrail           = false     ;             //Trail::Use Trail

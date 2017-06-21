@@ -30,11 +30,12 @@ class EntrySignal
             int  Revised_Std_Dev_Ch3();
             enum Operations
             {
-               DIRECTIONAL_BUY  =  1,
-               DIRECTIONAL_SELL =  10,
-               REVERSAL_BUY     =  2,
-               REVERSAL_SELL    =  20,
+               DIRECTIONAL_BUY  =  1110,
+               DIRECTIONAL_SELL =  1101,
+               REVERSAL_BUY     =  0111,
+               REVERSAL_SELL    =  1011,
                FAIL             =  0,
+               FAIL_ERR         =  -13,
             };
             enum Linear_Operations
             {
@@ -50,9 +51,9 @@ class EntrySignal
             {
                DIRECTIONAL = 0,  //Directional
                REVERSAL    = 1,  //Reversal
-               BOTH        = 2,  //Both
-               ST_DEV_C2   = 3,  //Standard Deviation 2
-               ST_DEV_C3   = 4,  //Standard Deviation 3
+               BOTH        = 4,  //Dir&Rev
+               ST_DEV_C2   = 2,  //Standard Deviation 2
+               ST_DEV_C3   = 3,  //Standard Deviation 3
                       
             };
    public:       
@@ -119,6 +120,7 @@ int  EntrySignal::Std_Dev_Ch2()
    double stdev_C2P  = ind.iLR(1,C2P)                                                            ;
    double stdev_C2M  = ind.iLR(1,C2M)                                                            ;  
    int    res        = FAIL                                                                      ;
+   if(stdev_C2P == 0 || stdev_C2M == 0) return FAIL_ERR                                          ;
    if( (Close[1]>stdev_C2P && Close[1]<bb_high) &&(Open[0]<bb_high_i0) ) res = REVERSAL_SELL     ;
    else  if( (Close[1]<stdev_C2M && Close[1]>bb_low) && (Open[0]>bb_low_i0) ) res = REVERSAL_BUY ;
    else if( (Close[1] > stdev_C2P && Close[1] > bb_high && Open[0] > bb_high_i0)||
@@ -126,7 +128,7 @@ int  EntrySignal::Std_Dev_Ch2()
              res = FAIL                                                                          ;
             }
    else res = FAIL                                                                               ;
-   Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
+   //Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
    return res;
 
 }
@@ -156,6 +158,8 @@ int  EntrySignal::Std_Dev_Ch3()
    double stdev_C3M  = ind.iLR(1,C3M)                                                                                               ;
    double stdev_C2M  = ind.iLR(1,C2M)                                                                                               ;
    int    res        = FAIL                                                                                                         ;
+   if(stdev_C2P == 0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0)        return FAIL_ERR                                          ;
+   
    //for buy
    if       (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] > bb_high  )                           res = DIRECTIONAL_BUY ;
    else if( (Close[1] >  stdev_C3P && Close[1] > bb_high   && Open [0] > stdev_C3P) &&  Open[0] > bb_high_i0) res = DIRECTIONAL_BUY ;
@@ -190,6 +194,7 @@ int EntrySignal :: Revised_Std_Dev_Ch2()
    double stdev_C2P  = ind.iLR(1,C2P)                                                                        ;
    double stdev_C2M  = ind.iLR(1,C2M)                                                                        ; 
    int    res        = FAIL                                                                                  ;
+   if(stdev_C2P == 0.0 || stdev_C2M == 0.0) return FAIL_ERR                                                      ;
    if     ( (Close[1] > stdev_C2P &&  Close[1] < bb_high)  &&(Open [0] < bb_high_i0)) res = REVERSAL_SELL    ;
    else if( (Close[1] < stdev_C2M &&  Close[1] > bb_low)   &&(Open [0] > bb_low_i0 )) res = REVERSAL_BUY     ;
    else if( (Close[1] > bb_high)  && (Close[1] < stdev_C2P && Close[1] > stdev_C2M )) res = DIRECTIONAL_BUY  ;
@@ -197,7 +202,7 @@ int EntrySignal :: Revised_Std_Dev_Ch2()
    else if( (Close[1] > stdev_C2P &&  Close[1] > bb_high   && Open [0] > bb_high_i0)||
             (Close[1] < stdev_C2M &&  Close[1] < bb_low    && Open [0] < bb_low_i0 )) res = FAIL             ;
    else                                                                               res = FAIL             ;
-   Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
+   //Comment("Std_Dev_Ch2() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
    return res;
 }
 /************************************************************************************************************************************************
@@ -225,6 +230,8 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    double stdev_C3M  =  ind.iLR(1,C3M)                                                                       ;
    double stdev_C2M  =  ind.iLR(1,C2M)                                                                       ; 
    int    res        =  FAIL                                                                                 ;
+   if(stdev_C2P == 0.0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0.0)        return FAIL                       ;
+   
    if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C2M )) res =  DIRECTIONAL_BUY  ;
    else if((Close[1] <  bb_low )  &&(Close[1] > stdev_C2M && Close[1] < stdev_C2P )) res =  DIRECTIONAL_SELL ;
    else if (Close[1] >  stdev_C3P )                                                  res =  REVERSAL_SELL    ;
@@ -233,10 +240,14 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] > bb_low )     res =  REVERSAL_BUY     ; 
    else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] > bb_high)     res =  REVERSAL_SELL    ;
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] < bb_low )     res =  REVERSAL_BUY     ;
-   else if (High [1] >= stdev_C2P && Close[1] < stdev_C2P && Close[1] < bb_high)     return FAIL             ;
+  // else if (High [1] >= stdev_C2P && Close[1] < stdev_C2P && Close[1] < bb_high)     return FAIL             ;
    //for sell
-   else if (Low  [1] <= stdev_C2M && Close[1] > stdev_C2M && Close[1] > bb_low )     return FAIL             ;   
-   return FAIL;
+  // else if (Low  [1] <= stdev_C2M && Close[1] > stdev_C2M && Close[1] > bb_low )     return FAIL             ;
+  else if( (Close[1] > stdev_C2P &&  Close[1] > bb_high   && Open [0] > bb_high_i0)||
+            (Close[1] < stdev_C2M &&  Close[1] < bb_low    && Open [0] < bb_low_i0 )) res = FAIL             ;   
+   Comment("Std_Dev_Ch3() values: \nres[",(string)res,"]\nbb_high[",(string)bb_high,"] bb_high_i0[",(string)bb_high_i0,"]\nbb_low[",(string)bb_low,"] bb_low_i0[",(string)bb_low_i0,"]\nstdev_C2P[",(string)stdev_C2P,"] stdev_C2M[",(string)stdev_C2M,"]") ;
+   
+   return res;
 }
 int EntrySignal :: isSignalCandle(int type, int& _ccode)
 {   
@@ -317,6 +328,7 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
             rest = ""+(string)ST_DEV_C2+""+(string)res2;
             _ccode = (int) rest                        ;
          }
+         else res = FAIL                               ;
          break;
       case ST_DEV_C2   :
          res = Revised_Std_Dev_Ch2()                   ;
@@ -332,6 +344,7 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
          break                                         ;
          
    }
+  // Comment(res);
    //res= (int)ST_DEV_C2+""+res;
    //Print("res[",res,"]");
    return res                                          ;
