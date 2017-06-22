@@ -195,12 +195,15 @@ int EntrySignal :: Revised_Std_Dev_Ch2()
    double bb_low_i0  = ind.iBB(0,MODE_LOWER)                                                                 ;
    double stdev_C2P  = ind.iLR(1,C2P)                                                                        ;
    double stdev_C2M  = ind.iLR(1,C2M)                                                                        ; 
+   double stdev_C1P  =  ind.iLR(1,C1P)                                                                       ;        
+   double stdev_C1M  =  ind.iLR(1,C1M)                                                                       ;        
    int    res        = FAIL                                                                                  ;
-   if(stdev_C2P == 0.0 || stdev_C2M == 0.0) return FAIL_ERR                                                      ;
+   if     (  stdev_C2P == 0.0 || stdev_C2M == 0.0) return FAIL_ERR                                           ;
    if     ( (Close[1] > stdev_C2P &&  Close[1] < bb_high)  &&(Open [0] < bb_high_i0)) res = REVERSAL_SELL    ;
    else if( (Close[1] < stdev_C2M &&  Close[1] > bb_low)   &&(Open [0] > bb_low_i0 )) res = REVERSAL_BUY     ;
    else if( (Close[1] > bb_high)  &&  Close[1] < stdev_C2P ) res = DIRECTIONAL_BUY  ;
-   else if( (Close[1] < bb_low)   &&  Close[1] > stdev_C2M ) res = DIRECTIONAL_SELL ;     
+   else if( (Close[1] < bb_low)   && (Close[1] > stdev_C2M && Close[1] < stdev_C1P ))res = DIRECTIONAL_SELL ;     
+   else if( (Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C1P )) res = DIRECTIONAL_BUY  ;
    else if( (Close[1] > stdev_C2P &&  Close[1] > bb_high   && Open [0] > bb_high_i0)||
             (Close[1] < stdev_C2M &&  Close[1] < bb_low    && Open [0] < bb_low_i0 )) res = FAIL             ;
    else                                                                               res = FAIL             ;
@@ -229,20 +232,27 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    double bb_low_i0  =  ind.iBB(0,MODE_LOWER)                                                                ;
    double stdev_C3P  =  ind.iLR(1,C3P)                                                                       ;
    double stdev_C2P  =  ind.iLR(1,C2P)                                                                       ;
+   double stdev_C1P  =  ind.iLR(1,C1P)                                                                       ;        
    double stdev_C3M  =  ind.iLR(1,C3M)                                                                       ;
    double stdev_C2M  =  ind.iLR(1,C2M)                                                                       ; 
+   double stdev_C1M  =  ind.iLR(1,C1M)                                                                       ;        
    int    res        =  FAIL                                                                                 ;
-   if(stdev_C2P == 0.0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0.0)        return FAIL                       ;
+   if(stdev_C1P == 0.0 || stdev_C1M == 0.0 || stdev_C2P == 0.0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0.0)        return FAIL                       ;
    
-   if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C2M )) res =  DIRECTIONAL_BUY  ;
-   else if((Close[1] <  bb_low )  &&(Close[1] > stdev_C2M && Close[1] < stdev_C2P )) res =  DIRECTIONAL_SELL ;
+   if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C1P )) res =  DIRECTIONAL_BUY  ;
+   else if((Close[1] <  bb_low )  &&(Close[1] > stdev_C2M && Close[1] < stdev_C1M )) res =  DIRECTIONAL_SELL ;
    else if (Close[1] >  stdev_C3P )                                                  res =  REVERSAL_SELL    ;
    else if (Close[1] <  stdev_C3M )                                                  res =  REVERSAL_BUY     ;
-   else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] < bb_high)     res =  REVERSAL_SELL    ;
+  /* else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] < bb_high)     res =  REVERSAL_SELL    ;
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] > bb_low )     res =  REVERSAL_BUY     ; 
    else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] > bb_high)     res =  REVERSAL_SELL    ;
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] < bb_low )     res =  REVERSAL_BUY     ;
-  // else if (High [1] >= stdev_C2P && Close[1] < stdev_C2P && Close[1] < bb_high)     return FAIL             ;
+  */
+   else if (High [1] >= stdev_C3P && ( Close[1] < stdev_C3P && Close[1] > stdev_C2P ) && Close[1] < bb_high)     res =  REVERSAL_SELL    ;
+   else if (Low  [1] <= stdev_C3M && ( Close[1] > stdev_C3M && Close[1] < stdev_C2M ) && Close[1] > bb_low )     res =  REVERSAL_BUY     ; 
+   else if (High [1] >= stdev_C3P && ( Close[1] < stdev_C3P && Close[1] > stdev_C2P ) && Close[1] > bb_high)     res =  REVERSAL_SELL    ;
+   else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] < bb_low )     res =  REVERSAL_BUY     ;
+   // else if (High [1] >= stdev_C2P && Close[1] < stdev_C2P && Close[1] < bb_high)     return FAIL             ;
    //for sell
   // else if (Low  [1] <= stdev_C2M && Close[1] > stdev_C2M && Close[1] > bb_low )     return FAIL             ;
   else if( (Close[1] > stdev_C2P &&  Close[1] > bb_high   && Open [0] > bb_high_i0)||
@@ -292,6 +302,18 @@ int EntrySignal :: isSignalCandle(int type, int& _ccode)
    string rest = ""                                    ;
    switch(type)
    {
+      case BOTH        :
+         res  = Std_Dev_Ch3()                          ;
+         res2 = Std_Dev_Ch2()                          ;
+         if(res != FAIL){
+            rest = ""+(string)ST_DEV_C3+""+(string)res ;
+            _ccode = (int) rest                        ;
+         }
+         else if(res2 != FAIL){
+            rest = ""+(string)ST_DEV_C2+""+(string)res ;
+            _ccode = (int) rest                        ;
+         }
+         break                                         ;
       case DIRECTIONAL :
          res  = Std_Dev_Ch3()                          ;
          res2 = Std_Dev_Ch2()                          ;
