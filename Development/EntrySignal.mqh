@@ -51,9 +51,9 @@ class EntrySignal
             };
             enum Strat_type
             {
-               DIRECTIONAL = 0,  //Directional
-               REVERSAL    = 1,  //Reversal
-               BOTH        = 4,  //Dir&Rev
+               DIRECTIONAL = 4,  //Directional
+               REVERSAL    = 5,  //Reversal
+               BOTH        = 1,  //Dir&Rev
                ST_DEV_C2   = 2,  //Standard Deviation 2
                ST_DEV_C3   = 3,  //Standard Deviation 3
                       
@@ -178,8 +178,6 @@ int  EntrySignal::Std_Dev_Ch3()
 /**********************************************************************************************************************************
  * Logic
  * --------
- * Trade Reversal:
- *	   When Market Closes Outside Channel 2 but inside Bollinger Band, and then opens inside Bollinger Band place Reversal Order.
  * Trade Directional:
  *    If Close Outside BB and within Channel 2, Place Directional Order. Only Directional Order.
  * Don't Trade if:
@@ -236,11 +234,11 @@ int EntrySignal :: Revised_Std_Dev_Ch2()
  *--------
  * Trade Directional:                                  
  * 	If Close Outside BB and within Channel 2, Place Directional Order. Only Directional Order.        
+ *  	When Market Closes Outside Channel 3 and Bollinger Band and then opens again outside Channel 3 and Bollinger Band place Directional Order.
  * Trade Reversal :
  *  	When Market Crosses Channel 3 and Closes inside both Channel 3 and Bollinger Band place Reversal Order.
- *  	When Market Crosses Channel 3 and Close inside Channel 3 but outside Bollinger Band place Reversal Order. 
- *  	When Market Closes Outside Channel 3 and Bollinger Band and then opens again outside Channel 3 and Bollinger B and place Reversal Order.        
- *  	When Closes Outside Channel 3 place Reversal Order
+ *  	When Market Crosses Channel 3 and Close inside Channel 3 but outside Bollinger Band place Reversal Order.         
+ *  	When Closes Outside Channel 3 place Reversal Order(Temp Ignore)
  * Don't Trade:
  *	   When Market Closes Outside Channel 2 but inside Bollinger Band, and then Opens inside Bollinger Band.
  *
@@ -304,12 +302,12 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    double stdev_C2M3 =  ind.iLR(3,C2M);
    double stdev_C1M  =  ind.iLR(1,C1M)                                                                       ;        
    int    res        =  FAIL                                                                                 ;
-   if(stdev_C1P == 0.0 || stdev_C1M == 0.0 || stdev_C2P == 0.0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0.0)        return FAIL                       ;
+   if(stdev_C1P == 0.0 || stdev_C1M == 0.0 || stdev_C2P == 0.0 ||stdev_C2M == 0.0 || stdev_C3P==0.0 || stdev_C3M == 0.0)  return FAIL   ;
    
    if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C1P )) res =  DIRECTIONAL_BUY  ;
    else if((Close[1] <  bb_low )  &&(Close[1] > stdev_C2M && Close[1] < stdev_C1M )) res =  DIRECTIONAL_SELL ;
-   else if (Close[1] >  stdev_C3P && Close[1] > bb_high)                             res =  DIRECTIONAL_SELL ;
-   else if (Close[1] <  stdev_C3M && Close[1] < bb_low )                             res =  DIRECTIONAL_BUY  ;
+   else if (Close[1] >  stdev_C3P && Close[1] > bb_high)                             res =  DIRECTIONAL_BUY  ;
+   else if (Close[1] <  stdev_C3M && Close[1] < bb_low )                             res =  DIRECTIONAL_SELL ;
    
    else if (High [1] >= stdev_C3P && ( Close[1] < stdev_C3P && Close[1] > stdev_C2P )) res =  REVERSAL_SELL  ;
    else if (Low  [1] <= stdev_C3M && ( Close[1] > stdev_C3M && Close[1] < stdev_C2M )) res =  REVERSAL_BUY   ;

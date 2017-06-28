@@ -41,7 +41,7 @@ class MoneyManagement
             bool   JumpToBreakeven(int magic,string comment,double when, double by)     ;
             bool   ModifyCheck(bool res)                                                ;
             bool   Ticket_Check(int ticket)                                             ;
-           
+            bool   isConsequtive(int code , int magic)                                  ;
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -149,6 +149,7 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
    double minsl = MarketInfo(Symbol(),MODE_STOPLEVEL)           ;
    minsl        = NormalizeDouble(minsl*point,Digits)           ;
    RefreshRates()                                               ;
+   //--------------------------------------------
    if(op == OP_BUY)
    {
        switch(sl_type)
@@ -210,7 +211,8 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
 {
    int ticket   = 0                                                             ;
    int Slippage = 33                                                            ;
-   if(op == OP_BUY)
+   //--------------------------------------------
+    if(op == OP_BUY)
       ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg)  ;
    else if(op==OP_SELL)
       ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
@@ -225,7 +227,8 @@ bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,
 {
    int ticket   = 0                                                             ;
    int Slippage = 33                                                            ;
-   if(op == OP_BUY)
+   //--------------------------------------------
+    if(op == OP_BUY)
       ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg)  ;
    else if(op==OP_SELL)
      ticket = OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
@@ -283,7 +286,8 @@ bool MoneyManagement::   Trail(double sl)
 bool MoneyManagement::   TrailOrder(int type, double val, int magic_Number){
    double point    = MarketInfo(Symbol(),MODE_POINT)                           ;
    int    min_stop =(int) MarketInfo(Symbol(),MODE_STOPLEVEL)                  ;
-   for(int ii=0; ii<OrdersTotal(); ii++)
+   //--------------------------------------------
+    for(int ii=0; ii<OrdersTotal(); ii++)
         {
          if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)==true)
            {
@@ -431,4 +435,25 @@ bool MoneyManagement::JumpToBreakeven(int tickt, double sl)
       }
    return true                                                                  ;
 
+}
+bool MoneyManagement::isConsequtive(int code,int magic)
+{
+   int total = OrdersHistoryTotal() ;
+   string ccode = (string)code      ;
+   Print("Total Orders[",total,"]") ;
+   if(OrderSelect(total -1, SELECT_BY_POS, MODE_HISTORY)>0)
+   {
+      if(OrderSymbol()==Symbol() && OrderMagicNumber()== magic)
+      {
+         Print("Order Selected");
+         Print("Code[",ccode,"] ");
+         if(StringFind(OrderComment(),ccode,0)!= -1)
+         {
+            Print("Code[",(string)code,"] Order Comment[",OrderComment(),"]");
+            return true;
+         }
+         else return false;
+      }
+   }
+   return false;
 }

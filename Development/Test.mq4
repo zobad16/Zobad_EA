@@ -12,8 +12,9 @@
 #include "Indicators.mqh"
 
 
-EntrySignal    *algo ;
-MoneyManagement *mm;
+EntrySignal     *algo ;
+MoneyManagement *mm   ;
+Indicators      *ind  ;
 
 enum LotType
 {
@@ -71,7 +72,7 @@ double                 _highestStop1                  ;
 double                 _lowestStop1                   ;
 input bool             _gapCloseCheck1    = false     ;             //Close Candle::Use time gap
 input int              _whenClose1        = 50        ;             //Close Candel::Time gap in minutes
-       
+bool                   LR_Flag            = false     ;      
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -79,8 +80,9 @@ input int              _whenClose1        = 50        ;             //Close Cand
 int OnInit()
   {
 //---
-   algo = new EntrySignal();
+   algo = new EntrySignal()    ;
    mm   = new MoneyManagement();
+   ind   = new Indicators()    ;
 //---
    return(INIT_SUCCEEDED);
   }
@@ -92,7 +94,8 @@ void OnDeinit(const int reason)
 //---
    
    delete(algo);
-   delete(mm);
+   delete(mm)  ;
+   delete(ind) ;
    
   }
 //+------------------------------------------------------------------+
@@ -101,6 +104,10 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
+   if(LR_Flag ==false)
+   {
+      if(CheckLR()==true)LR_Flag =true;
+   }
    if(useLegacy == true)
    {  
       if(algo.OrderOperationCode(Magic_Number)!=FAIL && useTrail==true)
@@ -115,20 +122,25 @@ void OnTick()
          if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
          {           
            Print("Buy Alert");
-           bool res = Revised_Buy(_strat_type,tcode);
+           bool res = Revised_Buy(ccode,tcode);
          }
          else if((tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
          {     
            Print("Sell Alert");
-           bool res = Revised_Sell(_strat_type,tcode);
+           bool res = Revised_Sell(ccode,tcode);
          }         
       }
    }
+   //------------------------------------------------------------
    else if(useLegacy == false)
    {
-      if(algo.OrderOperationCode(Magic_Number)!=FAIL && useTrail==true)
+      int comment =algo.OrderOperationCode(Magic_Number);
+      if(comment!=FAIL)
       {
-         mm.TrailOrder(_trail_type1,_trailBy,Magic_Number);
+         if(StringFind(comment,(string)DIRECTIONAL_BUY,1)!=0 || StringFind(comment,(string)DIRECTIONAL_SELL,1))
+         {mm.TrailOrder(_trail_type1,_trailBy,Magic_Number);}
+         else if(StringFind(comment,(string)REVERSAL_BUY,1)!=0 || StringFind(comment,(string)REVERSAL_SELL,1))
+         {mm.TrailOrder(_trail_type1,_trailBy,Magic_Number);}
       }   
       if(IsNewBar())
       {
@@ -136,14 +148,30 @@ void OnTick()
          int tcode = FAIL;         
          tcode = algo.isSignalCandleRev(_strat_type,ccode);   
          if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
-         {           
-           Print("Buy Alert Direction Code[",tcode,"]");
-           bool res = Revised_Buy(_strat_type,tcode);
+         { 
+            if((LR_Flag == true || mm.isConsequtive(ccode,Magic_Number)==false)&& tcode == REVERSAL_BUY){             
+               Print("Buy Alert Direction Code[",tcode,"]")                   ;
+               Print("Buy Alert C Code[",ccode,"]")                           ;
+               bool res = Revised_Buy(ccode,tcode)                      ;
+               LR_Flag  = false                                               ;
+            }
+            else if(tcode == DIRECTIONAL_BUY)
+            {
+               bool res = Revised_Buy(ccode,tcode)                      ;
+            }
          }
          else if((tcode == DIRECTIONAL_SELL||tcode==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
          {     
-           Print("Sell Alert Direction Code[",tcode,"]");
-           bool res = Revised_Sell(_strat_type,tcode);
+            if((LR_Flag == true || mm.isConsequtive(ccode,Magic_Number)==false) && tcode == REVERSAL_SELL){
+               Print("Sell Alert Direction Code[",tcode,"]")                  ;
+               Print("Sell Alert C Code[",ccode,"]")                          ;
+               bool res = Revised_Sell(ccode,tcode)                     ;
+               LR_Flag  = false                                               ;
+            }
+            else if(tcode == DIRECTIONAL_SELL)
+            {
+               bool res = Revised_Sell(ccode,tcode)                      ;
+            }
          }         
       }
    }
@@ -182,7 +210,7 @@ bool Sell(int strat,int rt_Code)
 }
 bool Revised_Buy(int strat, int rt_Code)
 {
-   string comment = (string)strat+""+(string)rt_Code;
+   string comment = (string)strat;
    double tp =0.0, sl =0.0;
    double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
    if     (rt_Code == DIRECTIONAL_BUY)
@@ -197,7 +225,7 @@ bool Revised_Buy(int strat, int rt_Code)
 }
 bool Revised_Sell(int strat, int rt_Code)
 {
-   string comment = (string)strat+""+(string)rt_Code;
+   string comment = (string)strat;
    double tp =0.0, sl =0.0;
    double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
    if     (rt_Code == DIRECTIONAL_SELL)
@@ -209,4 +237,43 @@ bool Revised_Sell(int strat, int rt_Code)
       mm.PlaceOrder(OP_SELL,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
    }
    return false;
+}
+int PreviousOrder()
+{
+   if(OrdersTotal()>0)
+   {
+      if(OrderSelect(0,SELECT_BY_POS,MODE_TRADES)>0)
+      {
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Number)
+         {
+            return OrderType();
+         }
+      }
+   }
+   else{
+      if(OrderSelect(0,SELECT_BY_POS,MODE_HISTORY)>0)
+      {
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Number)
+         {
+            return OrderType();
+         }
+      }   
+   }
+   return FAIL;
+}
+bool CheckLR()
+{
+   double lr  = ind.iLR(1,LR)      ;
+   int opcode = PreviousOrder()    ;
+   if     (opcode == OP_BUY )   
+   {
+      if(Close[1]>lr) return true  ;
+      else            return false ;      
+   }
+   else if(opcode == OP_SELL)
+   {
+      if(Close[1]<lr) return true  ;   
+      else            return false ;
+   }
+   return                     false;
 }
