@@ -14,6 +14,7 @@
 class MoneyManagement
 {
    private:
+            int    Slippage                                                             ; 
             int    _ticket                                                              ;
             double _prev_Atr                                                            ;
             Indicators *i                                                               ;
@@ -32,14 +33,19 @@ class MoneyManagement
             int    getTicket()                                                          ;
             int    getPrev_Atr()                                                        ;
             double CalculatePositionSize(int    type,    double    lot,  double rvalue) ;
+            double CalculatePositionSize(int    magic,       int comment)               ;
+            double CalculatePositionSizeHedge(int    magic,  int comment)               ;            
             double CalculateTP(int op,   int    tp_type, double value)                  ;
             double CalculateSL(int op,double op_Price,   int    sl_type, double value)  ;
+            bool   CloseAllOrders(int Magic_Number)                                     ;
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
+            bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, string comment);
             bool   TrailOrder(int type, double val, int magic)                          ;
             bool   isOrderOpen()                                                        ;
             bool   JumpToBreakeven(int magic,string comment,double when, double by)     ;
             bool   ModifyCheck(bool res)                                                ;
+            bool   EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb);
             bool   Ticket_Check(int ticket)                                             ;
             bool   isConsequtive(int code , int magic)                                  ;
 };
@@ -48,6 +54,7 @@ class MoneyManagement
 //+------------------------------------------------------------------+
 MoneyManagement::MoneyManagement()
   {
+   Slippage  = 33              ;
    _ticket   = 0               ;
    _prev_Atr = 0.0             ;
    i         = new Indicators();
@@ -86,6 +93,32 @@ double MoneyManagement:: CalculatePositionSize(int lot_type, double lot, double 
    }   
    else   lots = NormalizeDouble(lot,Digits)                     ;
    return lots                                                   ;   
+}
+double MoneyManagement::CalculatePositionSize(int magic,int strat)
+{
+   string comment = (string) strat     ;
+   double lot     =  0.0               ;
+   int    total   =  OrdersTotal()     ;
+   if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){
+      if(OrderMagicNumber() == magic && StringFind(OrderComment(),comment,0)!=-1){
+         lot =OrderLots();
+      }   
+  
+   }
+   return lot;
+}
+
+double MoneyManagement::CalculatePositionSizeHedge(int magic,int strat)
+{
+   string comment = (string) strat  ;
+   double lots    =  0.0            ;
+   int    total   = OrdersTotal()   ;
+   for(int ii = 0; ii < total; ii++){
+      if(OrderSelect(ii, SELECT_BY_POS , MODE_TRADES)>0){
+         lots = lots + OrderLots();
+      }   
+   }
+   return lots;
 }
 
 double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
@@ -210,7 +243,7 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
 bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl,int mg ,int comment)
 {
    int ticket   = 0                                                             ;
-   int Slippage = 33                                                            ;
+   //int Slippage = 33                                                          ;
    //--------------------------------------------
     if(op == OP_BUY)
       ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg)  ;
@@ -218,7 +251,7 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
       ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
    if(Ticket_Check(ticket)==true)
    {
-      bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment)               ;
+      bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,0,0)                   ;
       if(ModifyCheck(res))return true                                           ;
    }
    return false                                                                 ;
@@ -226,7 +259,7 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
 bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {
    int ticket   = 0                                                             ;
-   int Slippage = 33                                                            ;
+   //int Slippage = 33                                                          ;
    //--------------------------------------------
     if(op == OP_BUY)
       ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg)  ;
@@ -239,7 +272,29 @@ bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,
          double op_price =OrderOpenPrice()                                      ;
          tp = CalculateTP(op,tpType,tpval)                                      ;
          sl = CalculateSL(op,op_price,slType,slval)                             ;
-         bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,comment)            ;
+         bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,0,0)                ;
+         if(ModifyCheck(res))return true                                        ;
+      }
+   }
+   return false                                                                 ;
+}
+bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, string comment)
+{
+   int ticket   = 0                                                             ;
+   //int Slippage = 33                                                            ;
+   //--------------------------------------------
+    if(op == OP_BUY)
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,comment,mg)  ;
+   else if(op==OP_SELL)
+     ticket = OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,comment,mg);
+   if(Ticket_Check(ticket)==true)
+   {
+      double tp = 0.0, sl = 0.0                                                 ;
+      if(OrderSelect(ticket, SELECT_BY_TICKET,MODE_TRADES)>0){
+         double op_price =OrderOpenPrice()                                      ;
+         tp = CalculateTP(op,tpType,tpval)                                      ;
+         sl = CalculateSL(op,op_price,slType,slval)                             ;
+         bool res=OrderModify(ticket,OrderOpenPrice(),sl,tp,0,0)                ;
          if(ModifyCheck(res))return true                                        ;
       }
    }
@@ -272,6 +327,56 @@ bool MoneyManagement::Ticket_Check(int ticket)
      }
    return false                                                                ;
   }
+ 
+bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb)
+ {
+   double total=0.0;
+   for(int ii=0; ii<OrdersTotal(); ii++)
+    {
+      if(OrderSelect(ii,SELECT_BY_POS)==true)
+       {
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
+          {
+               total+=OrderProfit();             
+          }
+       }
+    }
+    if(total>=profitTarget && useProfit == true)
+      {
+         Print(total);
+         Print("Closing All Orders. Reached Profit");CloseAllOrders(Magic_Numb);
+      }
+    if(total<=stopLevel && useStop==true)
+      {
+         Print(total);
+         Print("Closing All Orders. Reached Stop Level");CloseAllOrders(Magic_Numb);
+      }
+         //Print("Total[",total,"]");
+   return false;
+ }  
+bool MoneyManagement:: CloseAllOrders(int Magic_Numbe)
+{
+   int total= OrdersTotal();
+   for(int ii=total-1;ii>=0;ii--){
+     if(OrderSelect(ii,SELECT_BY_POS)==true){
+        if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numbe){
+            if(OrderType()==OP_BUY){
+                 if(!OrderClose(OrderTicket(),OrderLots(),MarketInfo(OrderSymbol(),MODE_BID),Slippage,clrAntiqueWhite))
+                    Print("Order Send Failed with Error[",GetLastError(),"]");
+                        //continue;
+             }
+            if(OrderType()==OP_SELL){
+                  if(!OrderClose(OrderTicket(),OrderLots(),MarketInfo(OrderSymbol(),MODE_ASK),Slippage,clrAntiqueWhite))
+                    Print("Order Send Failed with Error[",GetLastError(),"]");
+                        //continue;
+             }          
+        }
+     }
+   }
+   return false;
+}
+ 
+ 
 bool MoneyManagement::   Trail(double sl)
 {
    Print("Trailing....")                                                       ;

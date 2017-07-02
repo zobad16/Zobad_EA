@@ -36,6 +36,14 @@ class EntrySignal
                DIRECTIONAL_SELL =  1101,
                REVERSAL_BUY     =  0111,
                REVERSAL_SELL    =  1011,
+               BUY              =  9009,
+               SELL             =  8008,
+               BUY_LEG1         =  18911,
+               BUY_LEG2         =  18921,
+               SELL_LEG1        =  18912,
+               SELL_LEG2        =  18922,
+               HEDGE_BUY        =  19811,
+               HEDGE_SELL        =  19812,
                FAIL             =  0,
                FAIL_ERR         =  -13,
             };
@@ -61,10 +69,13 @@ class EntrySignal
    public:       
             EntrySignal();
             ~EntrySignal();
+            int  Pattern_Point(double points);
+            int  Pattern_Point_Negative(double points);
             int  isSignalCandle(int type, int& _ccode);
             int  isSignalCandleRev(int type, int& _ccode);
             int  OrderOperationCode(int magic);
             bool isOrder(int &ticket,int magic, int opcode);
+            bool isExist(int magic, string comment, int &count, int &op_code, double &lots);
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -82,8 +93,83 @@ EntrySignal::~EntrySignal()
   }
 //+------------------------------------------------------------------+
 
-bool EntrySignal::isSell(int type){return false;}
-bool EntrySignal::isBuy(int type){return false;}
+bool EntrySignal::isSell(int t){return false;}
+bool EntrySignal::isBuy(int t){return false;}
+bool EntrySignal::isExist(int magic, string comment, int &count, int &op_code, double &prevlot)
+{
+   int total = OrdersTotal();
+   for(int ii=total-1; ii>0;ii--){
+      if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){ 
+         if(StringFind(OrderComment(),comment,0)!=-1){
+            count=count+1;
+            op_code = OrderType();
+            if(OrderLots()>prevlot){
+               prevlot = OrderLots();
+            }
+         }
+      }
+   }
+   Print("Count[",count,"]Method");
+   if (count>0) return true;
+   return false;
+}
+int  EntrySignal::Pattern_Point(double points)
+{
+  int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
+  int total =OrdersTotal();
+  if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0)
+  {
+   double openPrice=OrderOpenPrice();
+   int    op_type= OrderType();
+   if(op_type == OP_BUY)
+   {
+      //if(openPrice - Bid >= points)
+      if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit))
+      {
+         return DIRECTIONAL_BUY;
+      }
+   }
+   if(op_type == OP_SELL)
+   {
+      if(openPrice-Ask >=NormalizeDouble(points*_Point,digit))
+      //if(Ask-openPrice >=points)
+      {
+         return DIRECTIONAL_SELL;
+      }   
+   }  
+  }     
+  return FAIL;
+}
+
+int  EntrySignal::Pattern_Point_Negative(double points)
+{
+  int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
+  int total =OrdersTotal();
+  if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0)
+  {
+   
+   double openPrice=OrderOpenPrice();
+   int    op_type= OrderType();
+   if(op_type == OP_SELL){  
+      double t = (Bid - openPrice) * _Point;
+      
+      if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
+         Print("Checking sell[",t,"]" );  
+       //if(openPrice - Bid >= points)
+         return REVERSAL_SELL;
+      }
+   }
+   if(op_type == OP_BUY){
+      if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
+      double t = (openPrice- Ask) * _Point;
+      Print("Checking buy[",t,"]" );
+      //if(Ask-openPrice >=points)      
+         return REVERSAL_BUY;
+      }   
+   }  
+  }     
+  return FAIL;
+}
 int  EntrySignal::Directional(int op)
 {
    double bb_high = ind.iBB(1,MODE_UPPER)                                  ;
@@ -336,8 +422,8 @@ int EntrySignal :: Revised_Directional()
    int    res        =  FAIL                                                                                 ;
    if(      (Close[1] > bb_high)  &&  Close[1] < stdev_C2P ) res = DIRECTIONAL_BUY                           ;
    else if( (Close[1] < bb_low)   &&  Close[1] > stdev_C2M ) res = DIRECTIONAL_SELL                          ; 
-   else if  (Close[1] >  stdev_C3P && Close[1] > bb_high)    res = DIRECTIONAL_SELL                          ;
-   else if  (Close[1] <  stdev_C3M && Close[1] < bb_low )    res = DIRECTIONAL_BUY                           ;
+   else if  (Close[1] > stdev_C3P &&  Close[1] > bb_high)    res = DIRECTIONAL_BUY                           ;
+   else if  (Close[1] < stdev_C3M &&  Close[1] < bb_low )    res = DIRECTIONAL_SELL                          ;
    
    return res                                                                                                ;
 }
@@ -364,12 +450,12 @@ int EntrySignal :: Revised_Reversal()
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] > bb_low )     res =  REVERSAL_BUY     ; 
    else if (High [1] >= stdev_C3P && Close[1] < stdev_C3P && Close[1] > bb_high)     res =  REVERSAL_SELL    ;
    else if (Low  [1] <= stdev_C3M && Close[1] > stdev_C3M && Close[1] < bb_low )     res =  REVERSAL_BUY     ;                                                                              
-   else if (High [3] >= stdev_C3P3&& (Close[3] < stdev_C3P3 && Close[3] > stdev_C2P3) && 
-            High [2] >= stdev_C3P2&& (Close[2] < stdev_C3P2 && Close[2] > stdev_C2P2) &&
-            High [1] >= stdev_C3P && (Close[1] < stdev_C3P  && Close[1] > stdev_C2P)) res = REVERSAL_SELL    ;
-   else if (Low  [3] <= stdev_C3M3 &&(Close[3] > stdev_C3M3 && Close[3] < stdev_C2M3) &&
-            Low  [2] <= stdev_C3M2 &&(Close[2] > stdev_C3M2 && Close[2] < stdev_C2M2) &&  
-            Low  [1] <= stdev_C3M  &&(Close[1] > stdev_C3M  && Close[1] < stdev_C2M)) res = REVERSAL_BUY     ; 
+   else if (High [3] >= stdev_C3P3&&(Close[3] < stdev_C3P3&& Close[3] > stdev_C2P3) && 
+            High [2] >= stdev_C3P2&&(Close[2] < stdev_C3P2&& Close[2] > stdev_C2P2) &&
+            High [1] >= stdev_C3P &&(Close[1] < stdev_C3P && Close[1] > stdev_C2P)) res = REVERSAL_SELL      ;
+   else if (Low  [3] <= stdev_C3M3&&(Close[3] > stdev_C3M3&& Close[3] < stdev_C2M3) &&
+            Low  [2] <= stdev_C3M2&&(Close[2] > stdev_C3M2&& Close[2] < stdev_C2M2) &&  
+            Low  [1] <= stdev_C3M &&(Close[1] > stdev_C3M && Close[1] < stdev_C2M)) res = REVERSAL_BUY       ; 
    
    return res                                                                                                ;
 }

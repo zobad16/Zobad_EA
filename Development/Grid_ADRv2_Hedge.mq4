@@ -201,14 +201,15 @@ int Pattern_Point()
          return SELL;
       }   
    }  
-  }  
-   
+  }     
   return FAIL;
 }
 
 
 int Pattern_Reverse()
 {
+  if(Sell_Alert_1()) return BUY;
+  else if(Buy_Alert_1()) return SELL;
   return FAIL;
 }
 int Pattern_ADR()
