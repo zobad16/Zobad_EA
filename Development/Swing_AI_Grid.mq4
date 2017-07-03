@@ -81,23 +81,27 @@ input int              _whenJump2         = 25        ;             //Breakeven:
 input int              _jumpBy2           = 6         ;             //Breakeven:: Points to add after Jump
 
 extern string          gridSet="-------Grid Strategy -------";             //Directional TP/SL Settings
-input bool             useGridding        = true      ;             //Grid::Use Gridding
+input bool             useGridding        = true      ;             //Grid::Use Grid
+input bool             useGHedge          = false     ;             //Grid::Use Grid Hedge
+input bool             _use1StopCloseAll  = true     ;             //Use 1 Stop Close All
 input double           startLot           = 0.1       ;             //Grid::Starting lots
 input int              numberOfLegs       = 0         ;             //Grid::Number of Legs
 input  Type            legIncreaseDecrease= INCREASE  ;             //Grid::Leg Increase or decrease 
 input int              increaseLLotBy     = 2         ;             //Grid::Leg Lot Increase Factor(in multiples)
 input int              decreaseLLotBy     = 2         ;             //Grid::Leg Lot Decrease Factor(in multiples)
-input double           pointsE            = 30        ;             //Grid::Points fo next Entry
+input double           pointsE            = 30        ;             //Grid::Points for next Entry
 input Take_Profit_Type TP_Type3           = VOLATILITY;             //Grid TP:: Type
 input Take_Profit_Type SL_Type3           = VOLATILITY;             //Grid SL:: Type
 input double           TP_Value3          =  3.5      ;             //Grid TP:: Volatility/Fixed(Points)
 input double           SL_Value3          =  1.5      ;             //Grid SL:: Volatility/Fixed(Points)
+input bool             useTrail3          = false     ;             //Trail:: Use Trail
+input _type            _trail_type3       = FIX       ;             //Trail:: Type 
+input double           _trailBy3          = 40        ;             //Trail Volat/Fixed:: Trail by
 
 input bool             EQ_Based           = true      ;             //Use Equity Based TP
 input bool             useGridStop        = false     ;             //Us Equity Based SL
 input double           _profitTarget      = 1000      ;             //Profit Target
 input double           _stopLevel         = -500.0    ;             //Stop Out Level
-
 input int              _timegap1          = 31        ;             //Order 1 time gap(in mins)
 input bool             _use_risk_candle1  = false     ;             //Risk Management:: Use Risk Management
 input int              _risk_candle1      = 4         ;             //Risk Management:: Number of Candles to read
@@ -107,6 +111,7 @@ input bool             _gapCloseCheck1    = false     ;             //Close Cand
 input int              _whenClose1        = 50        ;             //Close Candel:: Time gap in minutes
 bool                   LR_Flag            = false     ;      
 double                 prev_lot           =0.0        ;
+int                    _cur_total         = 0         ;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -167,6 +172,7 @@ void OnTick()
    //------------------------------------------------------------
    else if(useLegacy == false)
    {
+      bool useLast = true;
       int comment =algo.OrderOperationCode(Magic_Number);
       
       if(comment!=FAIL)
@@ -185,6 +191,16 @@ void OnTick()
         //-------------------------------------------------------------------------------
          if(useGridding==true)
          {
+            if(useTrail3 == true){
+               mm.TrailOrder(_trail_type3,_trailBy3,Magic_Number);
+            }
+            if(_use1StopCloseAll == true ){
+               Print("StopAll[",_cur_total,"]");
+               if((OrdersTotal()<_cur_total)){
+                  _cur_total = OrdersTotal();
+                  mm.CloseAllOrders(Magic_Number);
+               }
+            }
             mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
             if(algo.OrderOperationCode(Magic_Number) == BUY_LEG1)
             {
@@ -193,20 +209,29 @@ void OnTick()
                int ccode      = FAIL;
                double alot    = 0.0 ;
                string c =(string)BUY_LEG1;
-               Print("c[",c,"]");
+               //Print("c[",c,"]");
                algo.isExist(Magic_Number,c,bcount,op_code,alot);
-               Print("bCount[",bcount,"]Main");
+               //Print("bCount[",bcount,"]Main");
                if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount<numberOfLegs)
                {
-                  prev_lot = mm.CalculatePositionSize(Magic_Number, BUY_LEG1);
-                  double nlot= prev_lot*increaseLLotBy;
-                  prev_lot = nlot;
+                  double nlot =0.0;
+                 /* if(useLast == true && OrdersTotal()<_cur_total){
+                     nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
+                     Print("Lot Finding");
+                  }
+                  else{*/
+                     prev_lot = mm.CalculatePositionSize(Magic_Number, BUY_LEG1);
+                     nlot= prev_lot*increaseLLotBy;
+                     prev_lot = nlot;
+                     
+                  //}
                   ccode    = BUY_LEG1;
                   op_code  = DIRECTIONAL_BUY;
-                  bool res = Revised_Buy(ccode,op_code,nlot);                   
+                  bool res = Revised_Buy(ccode,op_code,nlot);  
+                  _cur_total = OrdersTotal();                 
                }
                
-               else if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount==numberOfLegs)
+               else if(useGHedge==true && (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount==numberOfLegs)
                {
                   double pre_lot, n_lot =0.0;//Accumalative lot= prev_lot*increaseLLotBy;
                   int count , op_c;
@@ -220,11 +245,12 @@ void OnTick()
                      n_lot = mm.CalculatePositionSizeHedge(Magic_Number,BUY_LEG2);//Accumalative lot= prev_lot*increaseLLotBy;
                      //Print("_nLots[",n_lot,"]");
                   }
-                  Print("_nLots[",n_lot,"]");
+                  //Print("_nLots[",n_lot,"]");
                   prev_lot = n_lot;
                   ccode    = HEDGE_SELL;
-                  op_code  = DIRECTIONAL_BUY;
-                  bool res = Revised_Buy(ccode,op_code,n_lot);
+                  op_code  = DIRECTIONAL_SELL;
+                  bool res = Revised_Sell(ccode,op_code,n_lot);
+                  _cur_total = OrdersTotal();
                   
                   /*double pre_lot,n_lot= 0.0;
                      int count , op_c;
@@ -251,18 +277,28 @@ void OnTick()
                   double alot    = 0.0 ;
                   string s = (string)SELL_LEG1;
                   algo.isExist(Magic_Number,""+(string)SELL_LEG1,scount,op_code,alot);
-                  Print("s[",s,"]");
-                  Print("SCount[",scount,"]Main");
+                  //Print("s[",s,"]");
+                  //Print("SCount[",scount,"]Main");
                   if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount<numberOfLegs)
                   {
-                     double nlot= prev_lot*increaseLLotBy;
-                     prev_lot   = nlot;
+                     double nlot =0.0;
+                     /*if(useLast == true && OrdersTotal()<_cur_total){
+                        nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
+                        
+                     }
+                     else{*/
+                        prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
+                        nlot= prev_lot*increaseLLotBy;
+                        prev_lot = nlot;
+                        _cur_total = OrdersTotal();
+                     //}
                      ccode      = SELL_LEG1;
                      op_code    = REVERSAL_SELL;
-                     bool res   = Revised_Sell(ccode,op_code,nlot);                   
+                     bool res   = Revised_Sell(ccode,op_code,nlot);
+                                       
                   }
                   
-                  else if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount==numberOfLegs)
+                  else if( useGHedge==true &&(algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount==numberOfLegs)
                   {
                      double pre_lot,n_lot= 0.0;
                      int count , op_c;
@@ -282,7 +318,7 @@ void OnTick()
                      ccode    = HEDGE_BUY;
                      op_code  = DIRECTIONAL_BUY;
                      bool res = Revised_Buy(ccode,op_code,n_lot);
-                                        
+                     _cur_total = OrdersTotal();                   
                   }
                }
                 
@@ -334,7 +370,8 @@ void OnTick()
             else if(useHedge == false)
             {}
          }
-      }   
+      } 
+      //-------------------------------------------------------------  
       else if(comment == FAIL){
          if(IsNewBar())
          {
@@ -354,6 +391,7 @@ void OnTick()
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Buy(ccode, op_code, lot);
+                  _cur_total = 1;
                } 
                else  if((op_code == DIRECTIONAL_SELL||op_code==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
                {
@@ -363,6 +401,7 @@ void OnTick()
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Sell(ccode, op_code, lot);
+                  _cur_total = 1;
                } 
             }
             //---------------------------------------------------------------------------------------------------------------
@@ -453,18 +492,18 @@ bool Revised_Sell(int strat, int rt_Code, double _nlot)
    string comment = (string)strat;
    double tp =0.0, sl =0.0;
    //double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-   if     (strat == SELL_LEG1 && (rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
+   if     ((strat == SELL_LEG1 || strat == HEDGE_SELL)&&(rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {        
       mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
    }        
-   else if(strat == SELL_LEG2&& (rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
+   else if((strat == SELL_LEG2 || strat == HEDGE_SELL)&& (rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {
       mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);   
    }
-   else if (rt_Code == DIRECTIONAL_SELL ){
+   else if (rt_Code == DIRECTIONAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
    }
-   else if(rt_Code == REVERSAL_SELL ){
+   else if(rt_Code == REVERSAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
    }
    return false;
@@ -489,18 +528,18 @@ bool Revised_Buy(int strat, int rt_Code, double n_lot)
    string comment = (string)strat;
    double tp =0.0, sl =0.0;
   // double lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
-   if     (rt_Code == DIRECTIONAL_BUY)
+   if     (rt_Code == DIRECTIONAL_BUY && strat != BUY_LEG1 && strat != BUY_LEG2 )
    {       
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
    }        
-   else if(rt_Code == REVERSAL_BUY)
+   else if(rt_Code == REVERSAL_BUY && strat != BUY_LEG1 && strat != BUY_LEG2)
    {        
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
    }
-   else if(strat == BUY_LEG1 && (rt_Code== DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
+   else if((strat == BUY_LEG1 || strat == HEDGE_BUY) && (rt_Code== DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
    }
-   else if(strat == BUY_LEG2 && (rt_Code == DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
+   else if((strat == BUY_LEG2 || strat == HEDGE_BUY) && (rt_Code == DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
    }        
    return false;
@@ -587,6 +626,56 @@ double CalculateLot()
       }
    
    }
+   return lotsize;
+   
+}
+double CalculateLot2()
+{
+   double lotsize=0.0;
+   int    tick=0     ;
+   int total = OrdersHistoryTotal();   
+   if(OrderSelect(total-1,SELECT_BY_POS,MODE_HISTORY)>0){
+      if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){
+         lotsize=OrderLots();
+         tick = OrderTicket();
+      }                  
+   }
+   Print("Lot Size2[",lotsize,"], Ticket[",tick,"]");   
+   return lotsize;
+   
+}
+double CalculateLot2(int leg, int factor)
+{
+   double array1[];
+   double array2[];
+   ArrayResize(array1, leg,0 );
+   ArrayResize(array2, leg,0 );
+   double prev = startLot;
+   for (int ii =0 ; ii< leg-1; ii++){
+      array1[ii] = prev;
+      prev = prev* factor;
+   
+   }
+   double lotsize=0.0;
+   int    tick=0     ;
+   int total = OrdersTotal();
+   for (int ii = total-1; ii>0 ; ii--){
+      if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){
+         if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){
+            if(ii<=leg){
+               array2[ii] = OrderLots();
+            }
+         }
+      }     
+   }   
+   for(int ii =0; ii<leg; ii++){
+      for(int jj=leg-1; jj>0;jj--){
+         if(array1[ii]!=array2[jj]){
+            lotsize =array1[ii];
+         }
+      }
+         
+   }   
    return lotsize;
    
 }

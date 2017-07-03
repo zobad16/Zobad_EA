@@ -109,7 +109,7 @@ bool EntrySignal::isExist(int magic, string comment, int &count, int &op_code, d
          }
       }
    }
-   Print("Count[",count,"]Method");
+   //Print("Count[",count,"]Method");
    if (count>0) return true;
    return false;
 }
