@@ -154,7 +154,7 @@ int  EntrySignal::Pattern_Point_Negative(double points)
       double t = (Bid - openPrice) * _Point;
       
       if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
-         Print("Checking sell[",t,"]" );  
+         //Print("Checking sell[",t,"]" );  
        //if(openPrice - Bid >= points)
          return REVERSAL_SELL;
       }
@@ -162,7 +162,7 @@ int  EntrySignal::Pattern_Point_Negative(double points)
    if(op_type == OP_BUY){
       if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
       double t = (openPrice- Ask) * _Point;
-      Print("Checking buy[",t,"]" );
+     // Print("Checking buy[",t,"]" );
       //if(Ask-openPrice >=points)      
          return REVERSAL_BUY;
       }   

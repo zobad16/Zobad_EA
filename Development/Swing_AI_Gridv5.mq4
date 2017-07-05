@@ -172,7 +172,7 @@ void OnTick()
    //------------------------------------------------------------
    else if(useLegacy == false)
    {
-      bool useLast = true;
+      
       int comment =algo.OrderOperationCode(Magic_Number);
       
       if(comment!=FAIL)
@@ -189,6 +189,8 @@ void OnTick()
             mm.TrailOrder(_trail_type1,_trailBy,Magic_Number);
          }
         //-------------------------------------------------------------------------------
+        //Grid Leg Entry
+        bool useLast = true;
          if(useGridding==true)
          {
             if(useTrail3 == true){
@@ -215,16 +217,16 @@ void OnTick()
                if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount<numberOfLegs)
                {
                   double nlot =0.0;
-                 /* if(useLast == true && OrdersTotal()<_cur_total){
+                  if(useLast == true && OrdersTotal()<_cur_total){
                      nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
-                     Print("Lot Finding");
+                     Print("Lot Finding, Lot Size[",nlot,"]");
                   }
-                  else{*/
+                  else{
                      prev_lot = mm.CalculatePositionSize(Magic_Number, BUY_LEG1);
                      nlot= prev_lot*increaseLLotBy;
                      prev_lot = nlot;
                      
-                  //}
+                  }
                   ccode    = BUY_LEG1;
                   op_code  = DIRECTIONAL_BUY;
                   bool res = Revised_Buy(ccode,op_code,nlot);  
@@ -245,6 +247,7 @@ void OnTick()
                      n_lot = mm.CalculatePositionSizeHedge(Magic_Number,BUY_LEG2);//Accumalative lot= prev_lot*increaseLLotBy;
                      //Print("_nLots[",n_lot,"]");
                   }
+                  //----------------------------------------------------------
                   //Print("_nLots[",n_lot,"]");
                   prev_lot = n_lot;
                   ccode    = HEDGE_SELL;
@@ -282,22 +285,22 @@ void OnTick()
                   if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount<numberOfLegs)
                   {
                      double nlot =0.0;
-                     /*if(useLast == true && OrdersTotal()<_cur_total){
+                     if(useLast == true && OrdersTotal()<_cur_total){
                         nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
-                        
+                        Print("Lot Finding, Lot Size[",nlot,"]");
                      }
-                     else{*/
+                     else{
                         prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
                         nlot= prev_lot*increaseLLotBy;
                         prev_lot = nlot;
                         
-                     //}
+                     }
                      ccode      = SELL_LEG1;
                      op_code    = REVERSAL_SELL;
                      bool res   = Revised_Sell(ccode,op_code,nlot);
                      _cur_total +=1;                  
                   }
-                  
+                  //---------------------------------------------------------------------
                   else if( useGHedge==true &&(algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount==numberOfLegs)
                   {
                      double pre_lot,n_lot= 0.0;
@@ -651,7 +654,7 @@ double CalculateLot2(int leg, int factor)
    ArrayResize(array1, leg,0 );
    ArrayResize(array2, leg,0 );
    double prev = startLot;
-   for (int ii =0 ; ii< leg-1; ii++){
+   for (int ii =0 ; ii< leg; ii++){
       array1[ii] = prev;
       prev = prev* factor;
    
@@ -659,23 +662,44 @@ double CalculateLot2(int leg, int factor)
    double lotsize=0.0;
    int    tick=0     ;
    int total = OrdersTotal();
-   for (int ii = total-1; ii>0 ; ii--){
-      if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){
+   for (int ii = 0;ii<total; ii++){
+      if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)>0){
          if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){
-            if(ii<=leg){
+            
                array2[ii] = OrderLots();
-            }
+               Print("OrderLots[",OrderLots(),"]");
          }
       }     
-   }   
+   }
+   //ArraySort(array2,WHOLE_ARRAY,0,MODE_ASCEND);  
+   bool found = false; 
    for(int ii =0; ii<leg; ii++){
-      for(int jj=leg-1; jj>0;jj--){
+      for(int jj=0; jj<leg;jj++){
          if(array1[ii]!=array2[jj]){
+            found =false;
             lotsize =array1[ii];
+            //Print("Lot Size[",lotsize,"]");
+            }         
+         else if(array1[ii]==array2[jj]){
+            //Print("Found[",array1[ii],"]");
+            found = true;
+            break;
          }
+       }
+      if(found == false){
+         return lotsize;
       }
-         
+      
+               
    }   
    return lotsize;
    
 }
+/*bool isvalueinarray(int val, int *arr, int size){
+    int i;
+    for (i=0; i < size; i++) {
+        if (arr[i] == val)
+            return true;
+    }
+    return false;
+}*/
