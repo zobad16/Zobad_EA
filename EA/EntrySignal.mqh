@@ -409,10 +409,6 @@ int EntrySignal :: Revised_Std_Dev_Ch3()
    
    if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C1P )) res =  DIRECTIONAL_BUY  ;
    else if((Close[1] <  bb_low )  &&(Close[1] > stdev_C2M && Close[1] < stdev_C1M )) res =  DIRECTIONAL_SELL ;
-   if     ((Close[1] >  bb_high)  &&(Close[1] < stdev_C2P && Close[1] > stdev_C1P )) res =  DIRECTIONAL_BUY  ;
-   else if (Close[1] <  bb_low )                                                     res =  DIRECTIONAL_SELL ;
-   else if (Close[1] >  bb_high)                                                     res =  DIRECTIONAL_BUY  ;
-   else if((Close[1] <  bb_low )  &&(Close[1] < stdev_C2M ))                         res =  DIRECTIONAL_SELL ;
    else if (Close[1] >  stdev_C3P && Close[1] > bb_high)                             res =  DIRECTIONAL_BUY  ;
    else if (Close[1] <  stdev_C3M && Close[1] < bb_low )                             res =  DIRECTIONAL_SELL ;
    
