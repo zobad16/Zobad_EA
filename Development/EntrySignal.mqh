@@ -29,7 +29,9 @@ class EntrySignal
             int  Revised_Std_Dev_Ch2();
             int  Revised_Std_Dev_Ch3();
             int  Revised_Reversal()   ;
-            int  Revised_Directional()   ;
+            int  Revised_Directional();
+            int  Test_Directional()   ;
+            int  Test_Reversal()      ;
             enum Operations
             {
                DIRECTIONAL_BUY  =  1110,
@@ -75,6 +77,7 @@ class EntrySignal
             int  Pattern_Breakin();
             int  isSignalCandle(int type, int& _ccode);
             int  isSignalCandleRev(int type, int& _ccode);
+            int  isSignalCandleTest(int type,int &_ccode);
             int  OrderOperationCode(int magic);
             bool isOrder(int &ticket,int magic, int opcode);
             bool isExist(int magic, string comment, int &count, int &op_code, double &lots);
@@ -448,6 +451,42 @@ int EntrySignal :: Revised_Directional()
    
    return res                                                                                                ;
 }
+int EntrySignal :: Test_Directional()
+{
+   int res                 =  FAIL                 ;
+   double bb_high          =  ind.iBB(1,MODE_UPPER);
+   double bb_low           =  ind.iBB(1,MODE_LOWER);
+   //-----------------------------------------
+   
+   if(Close[1]>bb_high)     res = DIRECTIONAL_BUY  ;
+   else if(Close[1]<bb_low) res =DIRECTIONAL_SELL  ;
+   return res;
+}
+int EntrySignal:: Test_Reversal()
+{
+   int res = FAIL;
+   double bb_high          =  ind.iBB(1,MODE_UPPER);
+   double bb_low           =  ind.iBB(1,MODE_LOWER);
+   double bb_high2         =  ind.iBB(2,MODE_UPPER);
+   double bb_low2          =  ind.iBB(2,MODE_LOWER);
+   double stdev_C2P        =  ind.iLR(1,C2P)       ;
+   double stdev_C2M        =  ind.iLR(1,C2M)       ; 
+   double stdev_C3M        =  ind.iLR(1,C3M)       ;
+   double stdev_C3P        =  ind.iLR(1,C3P)       ;
+   double stdev_C2P2       =  ind.iLR(2,C2P)       ;
+   double stdev_C2M2       =  ind.iLR(2,C2M)       ; 
+   double stdev_C3M2       =  ind.iLR(2,C3M)       ;
+   double stdev_C3P2       =  ind.iLR(2,C3P)       ;  
+   //--------------------------------------
+   
+  if(High[1]>=stdev_C3P && Close[1]<stdev_C2P)                         res = REVERSAL_SELL;
+  else if(Low[1]<=stdev_C3M && Close[1]>stdev_C2M)                     res = REVERSAL_BUY ;
+  else if(Close[2]>stdev_C3P2 && Open[1]>stdev_C3P && Open[1]<bb_high) res = REVERSAL_SELL; 
+  else if(Close[2]<stdev_C3M2 && Open[1]<stdev_C3M && Open[1]>bb_low)  res = REVERSAL_BUY ; 
+   
+   
+   return res;
+}
 int EntrySignal :: Revised_Reversal()
 {
    double bb_high    =  ind.iBB(1,MODE_UPPER)                                                                ;
@@ -569,7 +608,7 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
             res = res3                                 ;
          }
          break                                         ;
-      case DIRECTIONAL :
+      case DIRECTIONAL :        
          res  = Revised_Directional()                  ;
          rest=""+(string)ST_DEV_C2+""+(string)res      ;
          _ccode = (int)rest                            ;
@@ -620,7 +659,66 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
    //res= (int)ST_DEV_C2+""+res;
    //Print("res[",res,"]");
    return res                                          ;
+}
+
+int EntrySignal :: isSignalCandleTest(int type, int& _ccode)
+{   
+   int res  = FAIL                                     ;
+   int res2 = FAIL                                     ;
+   int res3 = FAIL                                     ;
+   string rest=""                                      ;
+   switch(type)
+   {
+      case BOTH        :
+         res  = Test_Directional()                     ;
+         res2 = Test_Reversal()                        ;
+         res3 = Pattern_Breakin()                      ;
+         if(res != FAIL){
+            rest = ""+(string)DIRECTIONAL+""+(string)res ;
+            _ccode = (int) rest                        ;
+         }
+         else if(res2 != FAIL){
+            rest = ""+(string)REVERSAL+""+(string)res2;
+            _ccode = (int) rest                        ;
+            res = res2                                 ;
+         }
+         else if(res3 != FAIL){
+            rest = ""+(string)BREAKIN+""+(string)res3  ;
+            _ccode = (int) rest                        ;
+            res = res3                                 ;
+         }
+         break                                         ;
+      case DIRECTIONAL :
+         res  = Test_Directional()                     ;
+         _ccode = (int)rest                            ;
+         break                                         ;
+      case REVERSAL    :
+         res  = Test_Reversal()                        ;
+         if(res == REVERSAL_BUY || res == REVERSAL_SELL){
+            _ccode = (int) rest                        ;
+         }
+         else res = FAIL                               ;
+         break;
+      case ST_DEV_C2   :
+         break                                         ;
+      case ST_DEV_C3   :
+         break                                         ;
+      case BREAKIN     :
+         res = Pattern_Breakin()                      ;
+         if(res == REVERSAL_BUY || res == REVERSAL_SELL){
+            rest = ""+(string)BREAKIN+""+(string)res   ;
+            _ccode = (int) rest                        ;
+            Print("Res[",res," _Ccode[",_ccode,"]")  ;
+         }
+         break                                         ;
+         
+   }
+  // Comment(res);
+   //res= (int)ST_DEV_C2+""+res;
+   //Print("res[",res,"]");
+   return res                                          ;
 } 
+ 
 int  EntrySignal::OrderOperationCode(int magic){
     int total = OrdersTotal()                          ;
     int opCode = FAIL                                  ;
