@@ -74,6 +74,7 @@ class EntrySignal
             ~EntrySignal();
             int  Pattern_Point(double points);
             int  Pattern_Point_Negative(double points);
+            int  Pattern_Point_Negative(double points, int magic);
             int  Pattern_Breakin();
             int  isSignalCandle(int type, int& _ccode);
             int  isSignalCandleRev(int type, int& _ccode);
@@ -172,6 +173,38 @@ int  EntrySignal::Pattern_Point_Negative(double points)
          return REVERSAL_BUY;
       }   
    }  
+  }     
+  return FAIL;
+}
+int  EntrySignal::Pattern_Point_Negative(double points, int magic)
+{
+  int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
+  int total =OrdersTotal();
+  for(int i=total-1; i>0; i--){
+     if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
+     {
+      if(OrderMagicNumber()==magic && OrderSymbol()==Symbol()){      
+         double openPrice=OrderOpenPrice();
+         int    op_type= OrderType();
+         if(op_type == OP_SELL){  
+            double t = (Bid - openPrice) * _Point;
+            
+            if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
+               Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
+             //if(openPrice - Bid >= points)
+               return REVERSAL_SELL;
+            }
+         }
+         if(op_type == OP_BUY){
+            if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
+            double t = (openPrice- Ask) * _Point;
+            Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
+            //if(Ask-openPrice >=points)      
+               return REVERSAL_BUY;
+            }   
+         }
+      }  
+     }else{Print("Error Order Select");}
   }     
   return FAIL;
 }

@@ -112,12 +112,14 @@ input int              _whenClose1        = 50        ;             //Close Cand
 bool                   LR_Flag            = false     ;      
 double                 prev_lot           =0.0        ;
 int                    _cur_total         = 0         ;
+bool                   startFlag          = false     ;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
 //---
+   startFlag = true ;
    algo = new EntrySignal()    ;
    mm   = new MoneyManagement();
    ind   = new Indicators()    ;
@@ -142,6 +144,12 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
+   if(startFlag == true){
+      Print("Start is false now");
+      _cur_total = isOrdersTotal(Magic_Number);
+      startFlag = false;
+   }
+   Comment("EA Started. MG.NO[",Magic_Number,"]");
    if(LR_Flag ==false)
    {
       if(CheckLR()==true)LR_Flag =true;
@@ -197,10 +205,13 @@ void OnTick()
                mm.TrailOrder(_trail_type3,_trailBy3,Magic_Number);
             }
             if(_use1StopCloseAll == true ){
-               //Print("StopAll Current[",_cur_total,"], Total[",OrdersTotal(),"]");
-               if((OrdersTotal()<_cur_total)){
-                  _cur_total = 0;
+               Print("StopAll Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
+               if((isOrdersTotal(Magic_Number)<_cur_total)){
+                  
                   mm.CloseAllOrders(Magic_Number);
+                  _cur_total = 0;
+                  Print("Closed. Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
+               
                }
             }
             mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
@@ -214,7 +225,7 @@ void OnTick()
                //Print("c[",c,"]");
                algo.isExist(Magic_Number,c,bcount,op_code,alot);
                //Print("bCount[",bcount,"]Main");
-               if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount<numberOfLegs)
+               if( (algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_BUY)&& bcount<numberOfLegs)
                {
                   double nlot =0.0;
                   if(useLast == true && OrdersTotal()<_cur_total){
@@ -233,7 +244,7 @@ void OnTick()
                   _cur_total += 1;                 
                }
                
-               else if(useGHedge==true && (algo.Pattern_Point_Negative(pointsE) == REVERSAL_BUY)&& bcount==numberOfLegs)
+               else if(useGHedge==true && (algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_BUY)&& bcount==numberOfLegs)
                {
                   double pre_lot, n_lot =0.0;
                   int count , op_c;
@@ -289,7 +300,7 @@ void OnTick()
                      _cur_total +=1;                  
                   }
                   //---------------------------------------------------------------------
-                  else if( useGHedge==true &&(algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount==numberOfLegs)
+                  else if( useGHedge==true &&(algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_SELL)&& scount==numberOfLegs)
                   {
                      double pre_lot,n_lot= 0.0;
                      int count , op_c;
@@ -309,7 +320,7 @@ void OnTick()
                      ccode    = HEDGE_BUY;
                      op_code  = DIRECTIONAL_BUY;
                      bool res = Revised_Buy(ccode,op_code,n_lot);
-                     _cur_total = OrdersTotal();                   
+                     _cur_total += 1;                   
                   }
                }
                 
@@ -373,6 +384,7 @@ void OnTick()
             //Grid First Entry       
             if(useGridding == true)
             { 
+               Comment("EA Started. MG.NO[",Magic_Number,"]");
                int op_code=FAIL;
                op_code = algo.isSignalCandleRev(_strat_type,ccode);   //Uses Legacy Signals
                if((op_code == DIRECTIONAL_BUY||op_code==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
@@ -382,7 +394,7 @@ void OnTick()
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Buy(ccode, op_code, lot);
-                  _cur_total = OrdersTotal();
+                  _cur_total = isOrdersTotal(Magic_Number);
                } 
                else  if((op_code == DIRECTIONAL_SELL||op_code==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
                {
@@ -392,7 +404,7 @@ void OnTick()
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Sell(ccode, op_code, lot);
-                  _cur_total = OrdersTotal();
+                  _cur_total = isOrdersTotal(Magic_Number);
                } 
             }
             //---------------------------------------------------------------------------------------------------------------
@@ -667,6 +679,19 @@ double CalculateLot2(int leg, int factor)
    }   
    return lotsize;
    
+}
+int isOrdersTotal(int mg)
+{
+   int count =0;
+   int total = OrdersTotal();
+   for(int i = 0 ;i<total;i++){
+      if(OrderMagicNumber()==mg){
+         if(OrderSymbol()== Symbol()){
+            count+=1;
+         }      
+      }      
+   }
+   return count;
 }
 /*bool isvalueinarray(int val, int *arr, int size){
     int i;
