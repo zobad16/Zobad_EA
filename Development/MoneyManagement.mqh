@@ -99,11 +99,14 @@ double MoneyManagement::CalculatePositionSize(int magic,int strat)
    string comment = (string) strat     ;
    double lot     =  0.0               ;
    int    total   =  OrdersTotal()     ;
-   if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){
-      if(OrderMagicNumber() == magic && StringFind(OrderComment(),comment,0)!=-1){
-         lot =OrderLots();
+   for(int ij = total -1; ij>=0 ; ij--){
+      if(OrderSelect(ij,SELECT_BY_POS,MODE_TRADES)>0){
+         if(OrderMagicNumber() == magic && OrderSymbol() == Symbol()){
+           if(StringFind(OrderComment(),comment,0)!=-1){
+             return OrderLots();
+           }
+        }     
       }   
-  
    }
    return lot;
 }

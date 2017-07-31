@@ -195,7 +195,7 @@ void OnTick()
             mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
             if(OrderOperationCode(Magic_Number, BUY_LEG1) == true)
             {
-               int bcount= 1   ;
+               int bcount= 0   ;
                int op_code    = FAIL;
                int ccode      = FAIL;
                double alot    = 0.0 ;
@@ -251,12 +251,10 @@ void OnTick()
                 
                }
             }
-            else if(algo.OrderOperationCode(Magic_Number) == HEDGE_SELL)
-            {}
             else if(algo.OrderOperationCode(Magic_Number) == SELL_LEG1)
                {
                   prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
-                  int scount     = 1   ;
+                  int scount     = 0   ;
                   int op_code    = FAIL;
                   int ccode      = FAIL;
                   double alot    = 0.0 ;
@@ -311,19 +309,12 @@ void OnTick()
                       }                   
                   }
                }
-                
-               else if(algo.OrderOperationCode(Magic_Number) == HEDGE_BUY)
-               {
-                  
-               }
-            
-            
             }        
          //--------------------------------------------------------------------------------------
         
       } 
       //-------------------------------------------------------------  
-      else if(isOrdersTotal(Magic_Number)<1){
+      else if(isOrdersTotal(Magic_Number)<=0){
          if(IsNewBar())
          {
             int ccode = FAIL;
@@ -388,26 +379,29 @@ int Pattern_Point_Negative(double points, int magic)
 {
   int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
   int total =OrdersTotal();
-  for(int i=total-1; i>0; i--){
+  
+  for(int i=total-1; i>=0; i--){
+     //Print("Accessing Point Based Entry method");
      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
      {
-      Print("Chcking for legs");
+      //Print("Chcking for legs");
       if(OrderMagicNumber()==magic && OrderSymbol()==Symbol()){      
          double openPrice=OrderOpenPrice();
          int    op_type= OrderType();
          if(op_type == OP_SELL){  
-            double t = (Bid - openPrice) * _Point;
-            
-            if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
-               Print("Checking[",Bid-openPrice,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
+            double t = (Ask - openPrice) * _Point;
+            //Print("Checking[",NormalizeDouble(Ask-openPrice,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );
+            if(NormalizeDouble(Ask-openPrice,digit) >= NormalizeDouble(points*_Point,digit)){
+              // Print("Checking[",Bid-openPrice,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
              //if(openPrice - Bid >= points)
                return REVERSAL_SELL;
             }
          }
          if(op_type == OP_BUY){
-            if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
+            //Print("Checking [",NormalizeDouble(openPrice-Bid,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" ); 
+            if(NormalizeDouble(openPrice-Bid,digit) >=NormalizeDouble(points*_Point,digit)){
             double t = (openPrice- Ask) * _Point;
-            Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
+            //Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
             //if(Ask-openPrice >=points)      
                return REVERSAL_BUY;
             }   
@@ -631,8 +625,7 @@ double CalculateLot2(int leg, int factor)
    int total = OrdersTotal();
    for (int ii = 0;ii<total; ii++){
       if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)>0){
-         if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){
-            
+         if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){            
                array2[ii] = OrderLots();
                Print("OrderLots[",OrderLots(),"]");
          }
@@ -645,19 +638,17 @@ double CalculateLot2(int leg, int factor)
          if(array1[ii]!=array2[jj]){
             found =false;
             lotsize =array1[ii];
-            //Print("Lot Size[",lotsize,"]");
+            Print("Lot Size[",lotsize,"]");
             }         
          else if(array1[ii]==array2[jj]){
-            //Print("Found[",array1[ii],"]");
+            Print("Found[",array1[ii],"]");
             found = true;
             break;
          }
        }
       if(found == false){
          return lotsize;
-      }
-      
-               
+      }         
    }   
    return lotsize;
    
