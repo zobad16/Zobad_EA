@@ -105,12 +105,14 @@ bool EntrySignal::isExist(int magic, string comment, int &count, int &op_code, d
 {
    int total = OrdersTotal();
    for(int ii=total-1; ii>=0;ii--){
-      if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0){ 
-         if(StringFind(OrderComment(),comment,0)!=-1){
-            count=count+1;
-            op_code = OrderType();
-            if(OrderLots()>prevlot){
-               prevlot = OrderLots();
+      if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)>0){ 
+         if(OrderMagicNumber()==magic && OrderSymbol() == Symbol()){
+            if(StringFind(OrderComment(),comment,0)!=-1){
+               count=count+1;
+               op_code = OrderType();
+               if(OrderLots()>prevlot){
+                  prevlot = OrderLots();
+               }
             }
          }
       }
