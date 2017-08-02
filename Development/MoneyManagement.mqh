@@ -359,6 +359,7 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
  }  
 bool MoneyManagement:: CloseAllOrders(int Magic_Numbe)
 {
+   // int Slippage =33;
    int total= OrdersTotal();
    for(int ii=total-1;ii>=0;ii--){
      if(OrderSelect(ii,SELECT_BY_POS)==true){

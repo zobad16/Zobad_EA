@@ -80,6 +80,7 @@ class EntrySignal
             int  isSignalCandleRev(int type, int& _ccode);
             int  isSignalCandleTest(int type,int &_ccode);
             int  OrderOperationCode(int magic);
+            bool OrderOperationCode(int magic, int op);
             bool isOrder(int &ticket,int magic, int opcode);
             bool isExist(int magic, string comment, int &count, int &op_code, double &lots);
 };
@@ -180,28 +181,25 @@ int  EntrySignal::Pattern_Point_Negative(double points)
 }
 int  EntrySignal::Pattern_Point_Negative(double points, int magic)
 {
-  int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
+   int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
   int total =OrdersTotal();
-  for(int i=total-1; i>0; i--){
+  
+  for(int i=total-1; i>=0; i--){
      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
      {
       if(OrderMagicNumber()==magic && OrderSymbol()==Symbol()){      
          double openPrice=OrderOpenPrice();
          int    op_type= OrderType();
          if(op_type == OP_SELL){  
-            double t = (Bid - openPrice) * _Point;
-            
-            if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
-               Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
-             //if(openPrice - Bid >= points)
+            double t = (Ask - openPrice) * _Point;
+            if(NormalizeDouble(Ask-openPrice,digit) >= NormalizeDouble(points*_Point,digit)){
+               Print("Checking[",Bid-openPrice,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );
                return REVERSAL_SELL;
             }
          }
          if(op_type == OP_BUY){
-            if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
-            double t = (openPrice- Ask) * _Point;
-            Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
-            //if(Ask-openPrice >=points)      
+            if(NormalizeDouble(openPrice-Bid,digit) >=NormalizeDouble(points*_Point,digit)){
+            double t = (openPrice- Ask) * _Point;   
                return REVERSAL_BUY;
             }   
          }
@@ -769,6 +767,24 @@ int  EntrySignal::OrderOperationCode(int magic){
        }
      }
     return opCode                                      ;
+}
+bool EntrySignal::OrderOperationCode(int magic, int op){
+    int total = OrdersTotal()                          ;
+    int opCode = FAIL                                  ;
+    if(total<1)return FAIL                             ;
+    for(int i=0; i<total;i++)
+    {
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
+      {
+        // Print("Checking for order[",op,"]");
+         if((OrderMagicNumber()==magic ) && (OrderSymbol()==Symbol()) )
+         {
+            opCode = (int) OrderComment()              ;
+            if(opCode == op) return true;
+         }
+       }
+     }
+    return false                                      ;
 }
 bool EntrySignal::isOrder(int &ticket ,int magic, int opcode){
    

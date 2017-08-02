@@ -384,10 +384,8 @@ int Pattern_Point_Negative(double points, int magic)
   int total =OrdersTotal();
   
   for(int i=total-1; i>=0; i--){
-     //Print("Accessing Point Based Entry method");
      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
      {
-      //Print("Chcking for legs");
       if(OrderMagicNumber()==magic && OrderSymbol()==Symbol()){      
          double openPrice=OrderOpenPrice();
          int    op_type= OrderType();
@@ -395,17 +393,14 @@ int Pattern_Point_Negative(double points, int magic)
             double t = (Ask - openPrice) * _Point;
             //Print("Checking[",NormalizeDouble(Ask-openPrice,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );
             if(NormalizeDouble(Ask-openPrice,digit) >= NormalizeDouble(points*_Point,digit)){
-               Print("Checking[",Bid-openPrice,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
-             //if(openPrice - Bid >= points)
+               Print("Checking[",Bid-openPrice,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" );
                return REVERSAL_SELL;
             }
          }
          if(op_type == OP_BUY){
             //Print("Checking [",NormalizeDouble(openPrice-Bid,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" ); 
             if(NormalizeDouble(openPrice-Bid,digit) >=NormalizeDouble(points*_Point,digit)){
-            double t = (openPrice- Ask) * _Point;
-            //Print("Checking Point Value[",NormalizeDouble(points*_Point,digit),"]" );  
-            //if(Ask-openPrice >=points)      
+            double t = (openPrice- Ask) * _Point;   
                return REVERSAL_BUY;
             }   
          }
@@ -462,16 +457,20 @@ bool Revised_Sell(int strat, int rt_Code, double _nlot)
    if     ((strat == SELL_LEG1 || strat == HEDGE_SELL)&&(rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {        
       mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
+      return true;
    }        
    else if((strat == SELL_LEG2 || strat == HEDGE_SELL)&& (rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {
-      mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);   
+      mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment); 
+      return true;  
    }
    else if (rt_Code == DIRECTIONAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+       return true;
    }
    else if(rt_Code == REVERSAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+       return true;
    }
    return false;
 }
@@ -483,10 +482,12 @@ bool Revised_Buy(int strat, int rt_Code)
    if     (rt_Code == DIRECTIONAL_BUY)
    {       
       mm.PlaceOrder(OP_BUY,lot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+      return true;
    }        
    else if(rt_Code == REVERSAL_BUY)
    {        
-      mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+      mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment); 
+      return true;  
    }         
    return false;
 }

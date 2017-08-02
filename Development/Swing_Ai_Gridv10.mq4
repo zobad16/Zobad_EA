@@ -1,16 +1,16 @@
 //+------------------------------------------------------------------+
-//|                                                Swing_AI_Gridv6.mq4 |
-//|                                                    Zobad Mahmood |
+//|                                             Swing_Ai_Gridv10.mq4 |
+//|                                   Copyright 2017, Zobad Mahmood. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
-#property copyright "Zobad Mahmood"
+#property copyright "Copyright 2017, Zobad Mahmood."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 #property strict
 #include "EntrySignal.mqh"
 #include "MoneyManagement.mqh"
 #include "Indicators.mqh"
-
+//-------------------------------------------------------------------
 
 EntrySignal     *algo ;
 MoneyManagement *mm   ;
@@ -113,6 +113,10 @@ bool                   LR_Flag            = false     ;
 double                 prev_lot           =0.0        ;
 int                    _cur_total         = 0         ;
 bool                   startFlag          = false     ;
+
+
+//+------------------------------------------------------------------
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -122,7 +126,7 @@ int OnInit()
    startFlag = true ;
    algo = new EntrySignal()    ;
    mm   = new MoneyManagement();
-   ind   = new Indicators()    ;
+   ind   = new Indicators()    ;   
 //---
    return(INIT_SUCCEEDED);
   }
@@ -132,11 +136,9 @@ int OnInit()
 void OnDeinit(const int reason)
   {
 //---
-   
    delete(algo);
    delete(mm)  ;
-   delete(ind) ;
-   
+   delete(ind) ; 
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -144,12 +146,12 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
-   if(startFlag == true){
+  if(startFlag == true){
       Print("Start is false now");
       _cur_total = isOrdersTotal(Magic_Number);
+      Print("Closed. _Cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
       startFlag = false;
-   }
-   Comment("EA Started. MG.NO[",Magic_Number,"]");
+   }   Comment("EA Started. MG.NO[",Magic_Number,"]");
    if(LR_Flag ==false)
    {
       if(CheckLR()==true)LR_Flag =true;
@@ -179,11 +181,9 @@ void OnTick()
    }
    //------------------------------------------------------------
    else if(useLegacy == false)
-   {
-      
+   {      
       int comment =algo.OrderOperationCode(Magic_Number);
-      
-      if(comment!=FAIL)
+      if(isOrdersTotal(Magic_Number)>=1)
       {
          string com= StringSubstr((string)comment,1);
          string rb = ""+(string)REVERSAL_BUY     ;
@@ -205,43 +205,47 @@ void OnTick()
                mm.TrailOrder(_trail_type3,_trailBy3,Magic_Number);
             }
             if(_use1StopCloseAll == true ){
-               Print("StopAll Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
+              // Print("StopAll Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
                if((isOrdersTotal(Magic_Number)<_cur_total)){
-                  
+                  Print("StopAll Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
                   mm.CloseAllOrders(Magic_Number);
-                  _cur_total = 0;
-                  Print("Closed. Current[",_cur_total,"], Total[",isOrdersTotal(Magic_Number),"]");
+                  _cur_total = isOrdersTotal(Magic_Number);
+                  Print("Closed. _Cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
                
                }
             }
             mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
-            if(algo.OrderOperationCode(Magic_Number) == BUY_LEG1)
+            if(algo.OrderOperationCode(Magic_Number, BUY_LEG1) == true)
             {
-               int bcount= 1   ;
+               int bcount= 0   ;
                int op_code    = FAIL;
                int ccode      = FAIL;
                double alot    = 0.0 ;
                string c =(string)BUY_LEG1;
                //Print("c[",c,"]");
                algo.isExist(Magic_Number,c,bcount,op_code,alot);
-               //Print("bCount[",bcount,"]Main");
+              // Print("bCount[",bcount,"]Main");
                if( (algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_BUY)&& bcount<numberOfLegs)
                {
                   double nlot =0.0;
-                  if(useLast == true && OrdersTotal()<_cur_total){
+                 // if(useLast == true && isOrdersTotal(Magic_Number)<_cur_total){
                      nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
                      Print("Lot Finding, Lot Size[",nlot,"]");
-                  }
+                 /* }
                   else{
                      prev_lot = mm.CalculatePositionSize(Magic_Number, BUY_LEG1);
                      nlot= prev_lot*increaseLLotBy;
                      prev_lot = nlot;
                      
-                  }
+                  }*/
                   ccode    = BUY_LEG1;
                   op_code  = DIRECTIONAL_BUY;
                   bool res = Revised_Buy(ccode,op_code,nlot);  
-                  _cur_total += 1;                 
+                  if(res == true ){
+                     _cur_total += 1;   
+                     Print("Leg EntryB: _cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");              
+                  }
+                  else{Print("Buy Order(Leg) Failed");}
                }
                
                else if(useGHedge==true && (algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_BUY)&& bcount==numberOfLegs)
@@ -264,16 +268,18 @@ void OnTick()
                   ccode    = HEDGE_SELL;
                   op_code  = DIRECTIONAL_SELL;
                   bool res = Revised_Sell(ccode,op_code,n_lot);
-                  _cur_total += 1;
+                  if(res == true ) {
+                     _cur_total += 1;
+                  }
                 
                }
             }
-            else if(algo.OrderOperationCode(Magic_Number) == HEDGE_SELL)
+			else if(algo.OrderOperationCode(Magic_Number) == HEDGE_SELL)
             {}
             else if(algo.OrderOperationCode(Magic_Number) == SELL_LEG1)
                {
-                  prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
-                  int scount     = 1   ;
+                 // prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
+                  int scount     = 0   ;
                   int op_code    = FAIL;
                   int ccode      = FAIL;
                   double alot    = 0.0 ;
@@ -284,20 +290,24 @@ void OnTick()
                   if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount<numberOfLegs)
                   {
                      double nlot =0.0;
-                     if(useLast == true && OrdersTotal()<_cur_total){
+                   // if(useLast == true && isOrdersTotal(Magic_Number)<_cur_total){
                         nlot = CalculateLot2(numberOfLegs,increaseLLotBy);
                         Print("Lot Finding, Lot Size[",nlot,"]");
-                     }
-                     else{
+                    /*  }
+                    // else{
                         prev_lot = mm.CalculatePositionSize(Magic_Number, SELL_LEG1);
                         nlot= prev_lot*increaseLLotBy;
                         prev_lot = nlot;
-                        
-                     }
+                        */
+                     //}
                      ccode      = SELL_LEG1;
                      op_code    = REVERSAL_SELL;
                      bool res   = Revised_Sell(ccode,op_code,nlot);
-                     _cur_total +=1;                  
+                     if(res == true){
+                        _cur_total +=1;   
+                        Print("Leg EntryS: _cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");               
+                     }
+                     else{Print("Sell Order(Leg) Failed");}
                   }
                   //---------------------------------------------------------------------
                   else if( useGHedge==true &&(algo.Pattern_Point_Negative(pointsE, Magic_Number) == REVERSAL_SELL)&& scount==numberOfLegs)
@@ -320,24 +330,26 @@ void OnTick()
                      ccode    = HEDGE_BUY;
                      op_code  = DIRECTIONAL_BUY;
                      bool res = Revised_Buy(ccode,op_code,n_lot);
-                     _cur_total += 1;                   
+                     if(res == true){
+                      _cur_total += 1;
+                      }                   
                   }
-               }
-                
-               else if(algo.OrderOperationCode(Magic_Number) == HEDGE_BUY)
-               {
+				}
+				  else if(algo.OrderOperationCode(Magic_Number) == HEDGE_BUY)
+				  {
                   
-               }
-            
-            
+				  }
+               
             }        
          //--------------------------------------------------------------------------------------
-         if(IsNewBar())
+        
+       
+	  if(IsNewBar())
          {
             int ccode = FAIL;
             int tcode = FAIL;         
             tcode = algo.isSignalCandleRev(_strat_type,ccode);
-            if(useHedge == true && OrdersTotal() < 2)
+            if(useHedge == true && isOrdersTotal(Magic_Number) < 2)
             {
                if(!StringCompare((string)ccode,(string)algo.OrderOperationCode(Magic_Number))==0)
                {
@@ -374,7 +386,7 @@ void OnTick()
          }
       } 
       //-------------------------------------------------------------  
-      else if(comment == FAIL){
+      else if(isOrdersTotal(Magic_Number)<1){
          if(IsNewBar())
          {
             int ccode = FAIL;
@@ -386,17 +398,21 @@ void OnTick()
             { 
                Comment("EA Started. MG.NO[",Magic_Number,"]");
                int op_code=FAIL;
-               op_code = algo.isSignalCandleRev(_strat_type,ccode);   //Uses Legacy Signals
-               if((op_code == DIRECTIONAL_BUY||op_code==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
+               op_code = algo.isSignalCandleRev(_strat_type,ccode);
+               //op_code = DIRECTIONAL_BUY;   //Uses Legacy Signals
+               if((op_code == DIRECTIONAL_BUY||op_code==REVERSAL_BUY))
                {
                   ccode        = BUY_LEG1    ;
                   double lot   = startLot    ;
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Buy(ccode, op_code, lot);
-                  _cur_total = isOrdersTotal(Magic_Number);
+                  if(res == true){
+                     _cur_total = 1;
+                     Print("First EntryB: _cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
+                  }
                } 
-               else  if((op_code == DIRECTIONAL_SELL||op_code==REVERSAL_SELL)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
+               else  if((op_code == DIRECTIONAL_SELL||op_code==REVERSAL_SELL))
                {
                   Print("Grid Sell");
                   ccode        = SELL_LEG1   ;
@@ -404,11 +420,14 @@ void OnTick()
                   prev_lot     = startLot    ;
                   //-------------------------
                   bool res = Revised_Sell(ccode, op_code, lot);
-                  _cur_total = isOrdersTotal(Magic_Number);
+                  if(res == true){
+                     _cur_total = 1;
+                     Print("First EntryS: _cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
+                  }
                } 
             }
             //---------------------------------------------------------------------------------------------------------------
-            else if(useGridding == false){   
+         else if(useGridding == false){   
                if((tcode == DIRECTIONAL_BUY||tcode==REVERSAL_BUY)&&(algo.OrderOperationCode(Magic_Number)==FAIL))
                { 
                   if((LR_Flag == true || mm.isConsequtive(ccode,Magic_Number)==false)&& tcode == REVERSAL_BUY){             
@@ -437,13 +456,12 @@ void OnTick()
                      bool res = Revised_Sell(ccode,tcode)                      ;
                   }
                }
-            }         
+            }                  
          }
-     }
+     }//Print("Total Orders[",isOrdersTotal(Magic_Number),"]");
    }
   }
 //+------------------------------------------------------------------+
-
 bool IsNewBar()
   {
    static datetime RegBarTime=0;
@@ -483,16 +501,20 @@ bool Revised_Sell(int strat, int rt_Code, double _nlot)
    if     ((strat == SELL_LEG1 || strat == HEDGE_SELL)&&(rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {        
       mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
+      return true;
    }        
    else if((strat == SELL_LEG2 || strat == HEDGE_SELL)&& (rt_Code == DIRECTIONAL_SELL || rt_Code == REVERSAL_SELL))
    {
-      mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);   
+      mm.PlaceOrder(OP_SELL,_nlot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment); 
+      return true;  
    }
    else if (rt_Code == DIRECTIONAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+       return true;
    }
    else if(rt_Code == REVERSAL_SELL && strat != SELL_LEG1 && strat != SELL_LEG2  ){
        mm.PlaceOrder(OP_SELL,_nlot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+       return true;
    }
    return false;
 }
@@ -504,10 +526,12 @@ bool Revised_Buy(int strat, int rt_Code)
    if     (rt_Code == DIRECTIONAL_BUY)
    {       
       mm.PlaceOrder(OP_BUY,lot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+      return true;
    }        
    else if(rt_Code == REVERSAL_BUY)
    {        
-      mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+      mm.PlaceOrder(OP_BUY,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment); 
+      return true;  
    }         
    return false;
 }
@@ -519,16 +543,20 @@ bool Revised_Buy(int strat, int rt_Code, double n_lot)
    if     (rt_Code == DIRECTIONAL_BUY && strat != BUY_LEG1 && strat != BUY_LEG2 )
    {       
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+      return true;
    }        
    else if(rt_Code == REVERSAL_BUY && strat != BUY_LEG1 && strat != BUY_LEG2)
    {        
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+      return true;
    }
    else if((strat == BUY_LEG1 || strat == HEDGE_BUY) && (rt_Code== DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
+      return true;
    }
    else if((strat == BUY_LEG2 || strat == HEDGE_BUY) && (rt_Code == DIRECTIONAL_BUY ||rt_Code == REVERSAL_BUY )) {
       mm.PlaceOrder(OP_BUY,n_lot,TP_Type3,TP_Value3,SL_Type3,SL_Value3,Magic_Number,(int)comment);
+      return true;
    }        
    return false;
 }
@@ -540,10 +568,12 @@ bool Revised_Sell(int strat, int rt_Code)
    if     (rt_Code == DIRECTIONAL_SELL)
    {        
       mm.PlaceOrder(OP_SELL,lot,TP_Type1,TP_Value1,SL_Type1,SL_Value1,Magic_Number,(int)comment);
+      return true;
    }        
    else if(rt_Code == REVERSAL_SELL)
    {
       mm.PlaceOrder(OP_SELL,lot,TP_Type,TP_Value,SL_Type,SL_Value,Magic_Number,(int)comment);   
+      return true;
    }
    return false;
 }
@@ -636,46 +666,43 @@ double CalculateLot2(int leg, int factor)
 {
    double array1[];
    double array2[];
-   ArrayResize(array1, leg,0 );
-   ArrayResize(array2, leg,0 );
+   ArrayResize(array1, 100,0 );
+   ArrayResize(array2, 100,0 );
    double prev = startLot;
    for (int ii =0 ; ii< leg; ii++){
       array1[ii] = prev;
       prev = prev* factor;
-   
+      ArrayResize(array1,ArraySize(array1)+1);
    }
    double lotsize=0.0;
    int    tick=0     ;
    int total = OrdersTotal();
    for (int ii = 0;ii<total; ii++){
       if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)>0){
-         if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){
-            
+         if(OrderMagicNumber() == Magic_Number && OrderSymbol() == Symbol()){            
                array2[ii] = OrderLots();
+               ArrayResize(array2,ArraySize(array2)+1);
                Print("OrderLots[",OrderLots(),"]");
          }
       }     
-   }
-   //ArraySort(array2,WHOLE_ARRAY,0,MODE_ASCEND);  
+   } 
    bool found = false; 
-   for(int ii =0; ii<leg; ii++){
-      for(int jj=0; jj<leg;jj++){
+   for(int ii =0; ii<ArraySize(array1); ii++){
+      for(int jj=0; jj<ArraySize(array2);jj++){
          if(array1[ii]!=array2[jj]){
             found =false;
             lotsize =array1[ii];
             //Print("Lot Size[",lotsize,"]");
             }         
          else if(array1[ii]==array2[jj]){
-            //Print("Found[",array1[ii],"]");
+            Print("Found[",array1[ii],"]");
             found = true;
             break;
          }
        }
       if(found == false){
          return lotsize;
-      }
-      
-               
+      }         
    }   
    return lotsize;
    
@@ -693,11 +720,21 @@ int isOrdersTotal(int mg)
    }
    return count;
 }
-/*bool isvalueinarray(int val, int *arr, int size){
-    int i;
-    for (i=0; i < size; i++) {
-        if (arr[i] == val)
-            return true;
-    }
-    return false;
-}*/
+bool OrderOperationCode(int magic, int op){
+    int total = OrdersTotal()                          ;
+    int opCode = FAIL                                  ;
+    if(total<1)return FAIL                             ;
+    for(int i=0; i<total;i++)
+    {
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
+      {
+        // Print("Checking for order[",op,"]");
+         if((OrderMagicNumber()==magic ) && (OrderSymbol()==Symbol()) )
+         {
+            opCode = (int) OrderComment()              ;
+            if(opCode == op) return true;
+         }
+       }
+     }
+    return false                                      ;
+}
