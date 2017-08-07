@@ -381,10 +381,10 @@ bool IsNewBar()
 int Pattern_Point_Negative(double points, int magic)
 {
   int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
-  int total =OrdersTotal();
-  
-  for(int i=total-1; i>=0; i--){
-     if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
+  int total =isOrdersTotal(magic);
+  //Print("Total in Pattern Point -ve [",total,"]");
+  //for(int i=total-1; i>=0; i--){
+     if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0)
      {
       if(OrderMagicNumber()==magic && OrderSymbol()==Symbol()){      
          double openPrice=OrderOpenPrice();
@@ -398,15 +398,24 @@ int Pattern_Point_Negative(double points, int magic)
             }
          }
          if(op_type == OP_BUY){
-            //Print("Checking [",NormalizeDouble(openPrice-Bid,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" ); 
-            if(NormalizeDouble(openPrice-Bid,digit) >=NormalizeDouble(points*_Point,digit)){
+            RefreshRates();
+            Print("Checking [",openPrice-Bid,"] Point Value[",NormalizeDouble(points*_Point,digit),"]" ); 
+            Print("Checking [",openPrice-NormalizeDouble(Ask,digit),"] Point Value[",NormalizeDouble(points*_Point,digit),"]" ); 
+            Print("OpenPrice[",openPrice,"]Bid[",Bid,"],Ask[",Ask,"]");
+            Print("Checking [",NormalizeDouble(openPrice - (points *Point),digit),"]");
+            if(openPrice-Ask >=NormalizeDouble(points*_Point,digit)){
             double t = (openPrice- Ask) * _Point;   
                return REVERSAL_BUY;
-            }   
+            } /*
+            if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit)){
+         //Print("Checking sell[",t,"]" );  
+       //if(openPrice - Bid >= points)
+               return REVERSAL_SELL;
+            }*/  
          }
       }  
      }else{Print("Error Order Select");}
-  }     
+  //}     
   return FAIL;
 }
 bool CloseAllOrders(int Magic_Numbe)

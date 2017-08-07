@@ -287,7 +287,7 @@ void OnTick()
                   algo.isExist(Magic_Number,""+(string)SELL_LEG1,scount,op_code,alot);
                   //Print("s[",s,"]");
                   //Print("SCount[",scount,"]Main");
-                  if( (algo.Pattern_Point_Negative(pointsE) == REVERSAL_SELL)&& scount<numberOfLegs)
+                  if( (algo.Pattern_Point_Negative(pointsE,Magic_Number) == REVERSAL_SELL)&& scount<numberOfLegs)
                   {
                      double nlot =0.0;
                    // if(useLast == true && isOrdersTotal(Magic_Number)<_cur_total){
