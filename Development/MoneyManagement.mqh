@@ -39,6 +39,7 @@ class MoneyManagement
             double CalculateSL(int op,double op_Price,   int    sl_type, double value)  ;
             bool   CloseAllOrders(int Magic_Number)                                     ;
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
+            bool   PlaceOrderHidden (int op,   double lot,     int Magic_Number ,int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, string comment);
             bool   TrailOrder(int type, double val, int magic)                          ;
@@ -48,6 +49,7 @@ class MoneyManagement
             bool   EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb);
             bool   Ticket_Check(int ticket)                                             ;
             bool   isConsequtive(int code , int magic)                                  ;
+            int isOrdersTotal(int mg)                                                   ;
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -143,7 +145,7 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
              break                                              ;
           case 1:
              tp = Ask+(atr*value)                               ;
-             Print("Case 1 atr: Tp[",tp,"]")                    ;
+             Print("Case 1 volatility: Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
              Print("Mid Band: ",mid)                            ;
@@ -165,7 +167,7 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
              break                                              ;
           case 1:
              tp = Bid -(atr*value)                              ;
-             Print("Case 1: atr Tp[",tp,"]")                    ;
+             Print("Case 1: volatility Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
              tp = mid                                           ;
@@ -259,6 +261,19 @@ bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double
    }
    return false                                                                 ;
 }
+
+bool MoneyManagement::   PlaceOrderHidden (int op,   double lot,int mg ,int comment)
+{
+   int ticket   = 0                                                             ;
+   //int Slippage = 33                                                          ;
+   //--------------------------------------------
+    if(op == OP_BUY)
+      ticket=OrderSend(_Symbol,OP_BUY,lot,Ask,Slippage,0,0,(string)comment,mg)  ;
+   else if(op==OP_SELL)
+      ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
+   if(Ticket_Check(ticket)==true)return true                                    ;
+   return false                                                                 ;
+}
 bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {
    int ticket   = 0                                                             ;
@@ -334,25 +349,27 @@ bool MoneyManagement::Ticket_Check(int ticket)
 bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb)
  {
    double total=0.0;
+   if(OrdersTotal()<1)return false;
    for(int ii=0; ii<OrdersTotal(); ii++)
     {
       if(OrderSelect(ii,SELECT_BY_POS)==true)
        {
          if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
           {
-               total+=OrderProfit();             
+               total+=OrderProfit();
+               if(total>= profitTarget)break;             
           }
        }
     }
     if(total>=profitTarget && useProfit == true)
       {
          Print(total);
-         Print("Closing All Orders. Reached Profit");CloseAllOrders(Magic_Numb);
+         Print("Closing All Orders. Reached Profit");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
     if(total<=stopLevel && useStop==true)
       {
          Print(total);
-         Print("Closing All Orders. Reached Stop Level");CloseAllOrders(Magic_Numb);
+         Print("Closing All Orders. Reached Stop Level");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
          //Print("Total[",total,"]");
    return false;
@@ -376,11 +393,23 @@ bool MoneyManagement:: CloseAllOrders(int Magic_Numbe)
              }          
         }
      }
-   }
+   }if(isOrdersTotal(Magic_Numbe)==0)return true;
    return false;
 }
  
- 
+int MoneyManagement::isOrdersTotal(int mg)
+{
+   int count =0;
+   int total = OrdersTotal();
+   for(int ii = 0 ;ii<total;ii++){
+      if(OrderSelect(ii,SELECT_BY_POS,MODE_TRADES)>0){
+         if(OrderMagicNumber()==mg && OrderSymbol()== Symbol()){
+               count+=1;               
+         }      
+      }
+   }
+   return count;
+} 
 bool MoneyManagement::   Trail(double sl)
 {
    Print("Trailing....")                                                       ;

@@ -21,8 +21,7 @@ class EntrySignal
             Indicators *ind;
             bool isSell(int type);
             bool isBuy(int type);
-            int  Directional(int op);
-            int  Reversal(int op);
+            
             int  Std_Dev_Ch2();
             int  Std_Dev_Ch3();
             int  Std_Dev_All();
@@ -72,6 +71,8 @@ class EntrySignal
    public:       
             EntrySignal();
             ~EntrySignal();
+            int  Directional(int op);
+            int  Reversal(int op);
             int  Pattern_Point(double points);
             int  Pattern_Point_Negative(double points);
             int  Pattern_Point_Negative(double points, int magic);
@@ -226,7 +227,7 @@ int EntrySignal:: Pattern_Breakin()
    }
    return FAIL;
 }
-int  EntrySignal::Directional(int op)
+int  EntrySignal::Directional(int op=0)
 {
    double bb_high = ind.iBB(1,MODE_UPPER)                                  ;
    double bb_low  = ind.iBB(1,MODE_LOWER)                                  ;
@@ -235,13 +236,13 @@ int  EntrySignal::Directional(int op)
    else if(Open[1]>bb_low && Close[1]< bb_low  ) result = DIRECTIONAL_SELL ;
    return result                                                           ;   
 }
-int  EntrySignal::Reversal(int op)
+int  EntrySignal::Reversal(int op=0)
 {
    double bb_high = ind.iBB(1,MODE_UPPER)                                  ;
    double bb_low  = ind.iBB(1,MODE_LOWER)                                  ;
    int    result  = FAIL                                                   ;
-   if     (Open[1]<bb_high && Close[1]>bb_high ) result = REVERSAL_BUY     ;
-   else if(Open[1]>bb_low && Close[1]<bb_low   ) result = REVERSAL_SELL    ;
+   if     (Open[1]<bb_high && Close[1]>bb_high ) return(result = REVERSAL_BUY)     ;
+   else if(Open[1]>bb_low && Close[1]<bb_low   ) return(result = REVERSAL_SELL)    ;
    result = Pattern_Breakin()                                              ;
    return result                                                           ;
 }
