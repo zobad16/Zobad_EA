@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Zobad Mahmood"
 #property link      "www.quantsoftware.net"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 
 
@@ -75,8 +75,8 @@ bool                   order1Open         =  false    ;
 extern Strat_typeII      _strat_type        = _DIRECTIONAL ;           //Strategy:: Type      
 extern bool             useStrategy1       = true      ;             //Strategy:: Use Strategy
 bool                    useHedge           = false     ;             //Strategy:: Use Hegde 
-extern string          reversalSet="-------Reversal Strategy -------" ;             //Reversal TP and SL Settings
-
+ string          reversalSet="-------Reversal Strategy -------" ;             //Reversal TP and SL Settings
+extern bool             visible            = true      ;
 extern Take_Profit_Type TP_Type            = VOLATILITY;             //TP:: Type
 extern Take_Profit_Type SL_Type            = VOLATILITY;             //SL:: Type
 extern double           TP_Value           =  3.0      ;             //TP:: Volatility/Fixed(Points)
@@ -153,10 +153,9 @@ void OnTick()
   }
 //+------------------------------------------------------------------+
 void CloseOrder(){
-   int total = isOrdersTotal(Magic_Number);
    int ticket=0,op = 0;
    double lot=0.0,openprice=0.0;
-   for(int i =0; i<total; i++){
+   for(int i =0; i<OrdersTotal(); i++){
       if(OrderSelect(i,SELECT_BY_POS,MODE_OPEN)>0){
          if(OrderMagicNumber()==Magic_Number && OrderSymbol()==Symbol()){
             ticket = OrderTicket();
@@ -168,10 +167,10 @@ void CloseOrder(){
    }
    int errCode = StopHit(op,_tp,_sl);
    RefreshRates();
-   if( (op==OP_BUY && errCode == 1) ){if(OrderClose(ticket,lot,Bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
-   if(  op==OP_BUY && errCode == -1 ){if(OrderClose(ticket,lot,Bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
-   else if(op==OP_SELL && errCode == 1){if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
-   else if(op==OP_SELL && errCode == -1){if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+   if( (op==OP_BUY && errCode == 1) ){Print("Take Profit");if(OrderClose(ticket,lot,Bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+   if(  op==OP_BUY && errCode == -1 ){Print("Stop Loss");if(OrderClose(ticket,lot,Bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+   else if(op==OP_SELL && errCode == 1){Print("Take Profit");if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+   else if(op==OP_SELL && errCode == -1){Print("Stop Loss");if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
 }
 int StopHit(int op, double tp, double sl)
 {
@@ -320,14 +319,14 @@ int IsSignal(int strat, double range){
    double crange = High[1]- Low[1];
    if(crange > nrange){ //Print("Range Crossed");
       if(strat == _DIRECTIONAL_Range){
-      Print("Directional");
-         if(Open[1]< ma && Close[1]>ma){/*Print("Directional Buy");*/return(DIRECTIONAL_BUY);}
-         else if(Open[1]>ma && Close[1]<ma){/*Print("Directional Sell");*/return(DIRECTIONAL_SELL);}         
+     // Print("Directional");
+         if(Open[1]< ma && Close[1]>ma){Print("Directional Buy");return(DIRECTIONAL_BUY);}
+         else if(Open[1]>ma && Close[1]<ma){Print("Directional Sell");return(DIRECTIONAL_SELL);}         
          }
       else if(strat ==_REVERSAL_Range){
-         Print("Reversal");
-         if(Open[1]>ma && Close[1]<ma){/*Print("Reversal Buy");*/return(REVERSAL_BUY);}//Buy("Reversal");}
-         else if(Open[1]< ma && Close[1]>ma){/*Print("Reversal Sell");*/return(REVERSAL_SELL);}
+         //Print("Reversal");
+         if(Open[1]>ma && Close[1]<ma){Print("Reversal Buy");return(REVERSAL_BUY);}//Buy("Reversal");}
+         else if(Open[1]< ma && Close[1]>ma){Print("Reversal Sell");return(REVERSAL_SELL);}
       }
       else if(strat == DIRECTIONAL){
          int ccode = algo.Directional();
@@ -345,4 +344,3 @@ int IsSignal(int strat, double range){
    }
    return FAIL;
 }
-      

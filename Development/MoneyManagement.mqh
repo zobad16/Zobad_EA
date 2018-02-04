@@ -357,7 +357,8 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
          if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
           {
                total+=OrderProfit();
-               if(total>= profitTarget)break;             
+               if(total>= profitTarget)break;
+               else if(useStop && total<=stopLevel)break;             
           }
        }
     }
