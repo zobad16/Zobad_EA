@@ -73,6 +73,7 @@ int OnCalculate(const int rates_total,
 //+------------------------------------------------------------------+
 void PriceRatio(double &y[], double &x[], double &res[])
 {
+   
    double result =0.0;
    int size = ArraySize(x);
    if(size!=ArraySize(y))size = 0;   
@@ -102,3 +103,29 @@ void Mean(double &pr[], double &res[])
    for(int i = 0; i<size; i++)res[i]=avg;
    
 }
+ void LR(double &pr[],double &pStart, double &pStop)
+ {
+   int n = channelLength - 1;
+   double value=0.0;
+   double a,b,c;
+   double sumy=value;
+   double sumx=0.0;
+   double sumxy=0.0;
+   double sumx2=0.0;
+   for(int i=1; i<n; i++)
+     {
+      value=pr[i];
+      sumy+=value;
+      sumxy+=value*i;
+      sumx+=i;
+      sumx2+=i*i;
+     }
+   c=sumx2*n-sumx*sumx;
+   if(c==0.0) return;
+   b=(sumxy*n-sumx*sumy)/c;
+   a=(sumy-sumx*b)/n;
+   double LR_price_2=a;
+   double LR_price_1=a+b*n;
+   pStart = LR_price_1;
+   pStop = LR_price_2;
+ }
