@@ -31,6 +31,7 @@ class EntrySignal
             int  Revised_Directional();
             int  Test_Directional()   ;
             int  Test_Reversal()      ;
+            
             enum Operations
             {
                DIRECTIONAL_BUY  =  1110,
@@ -72,19 +73,20 @@ class EntrySignal
             EntrySignal();
             ~EntrySignal();
             int  Directional(int op);
-            int  Reversal(int op);
+            bool isExist(int magic, string comment, int &count, int &op_code, double &lots);
+            bool isOrder(int &ticket,int magic, int opcode);
+            int  isSignalCandle(int type, int& _ccode);
+            int  isSignalCandleRev(int type, int& _ccode);
+            int  isSignalCandleTest(int type,int &_ccode);                        
+            int  OrderOperationCode(int magic);
+            bool OrderOperationCode(int magic, int op);
             int  Pattern_Point(double points);
             int  Pattern_Point_Negative(double points);
             int  Pattern_Point_Negative(double points, int magic);
             int  Pattern_Point_Negatives(double points, int magic);
             int  Pattern_Breakin();
-            int  isSignalCandle(int type, int& _ccode);
-            int  isSignalCandleRev(int type, int& _ccode);
-            int  isSignalCandleTest(int type,int &_ccode);
-            int  OrderOperationCode(int magic);
-            bool OrderOperationCode(int magic, int op);
-            bool isOrder(int &ticket,int magic, int opcode);
-            bool isExist(int magic, string comment, int &count, int &op_code, double &lots);
+            int  PR_Directional(string y, string x);
+            int  Reversal(int op);
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -811,4 +813,13 @@ bool EntrySignal::isOrder(int &ticket ,int magic, int opcode){
     }
     return false                                       ;
 
-}      
+}   
+int EntrySignal:: PR_Directional(string y, string x)
+{
+   double bb_up = ind.iPR(y,x,1,4);//get upper
+   double bb_low= ind.iPR(y,x,1,3);//get lower
+   double pr= ind.iPR(y,x,1,0);// get pr
+   if(pr>bb_up) return DIRECTIONAL_BUY;//if pr>upper return Directional Buy
+   else if(pr<bb_low) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
+   else return FAIL_ERR;
+}   

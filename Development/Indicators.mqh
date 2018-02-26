@@ -25,6 +25,9 @@ class Indicators
             double          iAtr(int index);
             double          iBB(int index, int mode);
             double          iLR(int index, int mode);
+            double          iLR2(int index,int mode);
+            double          iPR(string y, string x,int index, int mode);
+            double          iPR2(int index, int mode);
             Indicators();
             ~Indicators();
 };
@@ -109,4 +112,59 @@ double Indicators::iLR(int index,int mode)
    }
    return ilr;
    
+}
+
+double Indicators::iLR2(int index,int mode)
+{
+   double ilr=0.0;
+   switch (mode)
+   {
+      case 0:{//Linear Regression Line
+         string a = (string)_LR_period+"m "+(string)_LR_length+" TL";         
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case 1:{//STD Channel1 Positive
+         string a = (string)_LR_period+"m "+(string)_LR_length+" +"+(string)_std_Channel_1+"d";;
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case -1:{//STD Channel1 Negative
+         string a = (string)_LR_period+"m "+(string)_LR_length+" -"+(string)_std_Channel_1+"d";
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case 2:{//STD Channel2 Positive
+         string a =(string)_LR_period+"m "+(string)_LR_length+" +"+(string)_std_Channel_2+"d";
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case -2:{//STD Channel2 Negative
+         string a = (string)_LR_period+"m "+(string)_LR_length+" -"+(string)_std_Channel_2+"d";
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case 3:{//STD Channel3 Positive
+         string a = (string)_LR_period+"m "+(string)_LR_length+" +"+(string)_std_Channel_3+"d";
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+      case -3:{//STD Channel3 Negative
+         string a =(string)_LR_period+"m "+(string)_LR_length+" -"+(string)_std_Channel_3+"d";
+         ilr = NormalizeDouble(ObjectGetValueByShift(a, index),Digits);
+         break;}
+   }
+   return ilr;
+   
+}
+double Indicators :: iPR(string y,string x, int index, int mode)
+{
+   string Y              = "EURUSD";
+   string X              = "GBPUSD";
+   int    SignalMethod   = MODE_SMA;
+   int    SignalSMA      = 20;
+   int    SignalSMA2     = 100;
+   int    BandsPeriod    = 20;
+   int    BandsDeviation = 2;
+   string path = "price_ratio_0.0.3.EX4";
+   /*
+   double bb_up = iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,4,1);
+   double bb_down= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,3,1);
+   double bb_mid= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,1,1);
+   double pr= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,0,1);*/
+   return iCustom(NULL,0,path,y,x,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,mode,index);
 }
