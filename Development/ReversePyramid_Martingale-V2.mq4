@@ -147,8 +147,13 @@ void OnTick()
         if(isOrdersTotal(Magic_Number)<1 ){         
          if( IsNewBar()){
             int ccode = IsSignal(_strat_type,_range);
-            if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
-            else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
+            if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
+               if(ccode == DIRECTIONAL_BUY) mm.PlaceOrderPairs(pairY,pairX,OP_BUY,OP_SELL,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
+               else if(ccode == DIRECTIONAL_SELL) mm.PlaceOrderPairs(pairY,pairX,OP_SELL,OP_BUY,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
+               _count = 1;
+            }
+            //if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
+            //else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
          }   
       }
       else{/*int errCode=StopHit(OP_BUY,_tp,_sl);*/CloseOrder();CutAndReverse();}
@@ -179,13 +184,15 @@ int StopHit(int op, double tp, double sl)
 {
    //0=fail, 1=tp,-1=sl
    RefreshRates();
-   if(op==OP_BUY){
-       if(Bid> tp){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(1);}
-       else if(Bid<sl){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(-1);}       
-   }
-   else if(op==OP_SELL){
-      if(Ask<tp){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(1);}
-      else if(Ask>sl){/*Print("ask[",Ask,"]bid[",Bid,"]");*/ return(-1);}
+   if(!visible){
+      if(op==OP_BUY){
+          if(Bid> tp){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(1);}
+          else if(Bid<sl){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(-1);}       
+      }
+      else if(op==OP_SELL){
+         if(Ask<tp){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(1);}
+         else if(Ask>sl){/*Print("ask[",Ask,"]bid[",Bid,"]");*/ return(-1);}
+      }
    }
    return(0);
 }   
@@ -223,13 +230,15 @@ bool PlaceOrder(int strat, int op){
    lot = mm.CalculatePositionSize(lotType,LotSize,_risk);
    if(op == OP_BUY){
       if(strat == DIRECTIONAL)comment ="Directional Buy";
-      else if(strat == REVERSAL)comment ="Reversal Buy";    
+      else if(strat == REVERSAL)comment ="Reversal Buy";
+      else if(strat == _PAIR_DIRECTIONAL) comment = "Pair Directional";    
     openprice = Bid;
    }
    else if(op==OP_SELL){
     //comment ="Sell";
     if(strat == DIRECTIONAL)comment ="Directional Sell";
     else if(strat == REVERSAL)comment ="Reversal Sell";
+    else if(strat == _PAIR_DIRECTIONAL) comment = "Pair Directional";
     openprice = Ask;    
    }
    mm.PlaceOrderHidden(op,lot,Magic_Number,(int)comment);
@@ -320,12 +329,16 @@ int IsSignal(int strat, double range){
    double atr = ind.iAtr(1);
    double nrange = atr * range;
    double crange = High[1]- Low[1];
-   if(crange > nrange){ //Print("Range Crossed");
+  //Print("Range Crossed");
       if(strat == _DIRECTIONAL_Range){
      // Print("Directional");
-         if(Open[1]< ma && Close[1]>ma){Print("Directional Buy");return(DIRECTIONAL_BUY);}
-         else if(Open[1]>ma && Close[1]<ma){Print("Directional Sell");return(DIRECTIONAL_SELL);}         
+         if(crange > nrange)
+         {
+              if(Open[1]< ma && Close[1]>ma){Print("Directional Buy");return(DIRECTIONAL_BUY);}
+              else if(Open[1]>ma && Close[1]<ma){Print("Directional Sell");return(DIRECTIONAL_SELL);}
          }
+         else return FAIL;         
+      }
       else if(strat ==_REVERSAL_Range){
          //Print("Reversal");
          if(Open[1]>ma && Close[1]<ma){Print("Reversal Buy");return(REVERSAL_BUY);}//Buy("Reversal");}
@@ -348,7 +361,23 @@ int IsSignal(int strat, double range){
          if(ccode == DIRECTIONAL_BUY  || ccode == DIRECTIONAL_SELL ){Print("Pair Breakin"); return ccode;}
       
       }
-      return FAIL;
-   }
-   return FAIL;
+      return FAIL;   
+}
+void CalculatePairLot(string y, string x){
+   //find tick value
+   double y_tickvalue = MarketInfo(y,MODE_TICKVALUE);
+   double x_tickvalue = MarketInfo(x,MODE_TICKVALUE);
+   //find tick size
+   double y_ticksize = MarketInfo(y,MODE_TICKSIZE);
+   double x_ticksize = MarketInfo(x,MODE_TICKSIZE);
+   //min lot step
+   double y_lotstep = MarketInfo(y,MODE_LOTSTEP);
+   double x_lotstep = MarketInfo(x,MODE_LOTSTEP);
+   //min lot size allowed
+   double y_minlot = MarketInfo(y,MODE_MINLOT);
+   double x_minlot = MarketInfo(x,MODE_MINLOT);
+   //---------------------------------------
+   //Check how to equalize lot size 
+
+
 }

@@ -37,11 +37,14 @@ class MoneyManagement
             double CalculatePositionSizeHedge(int    magic,  int comment)               ;            
             double CalculateTP(int op,   int    tp_type, double value)                  ;
             double CalculateSL(int op,double op_Price,   int    sl_type, double value)  ;
+            double CalculateTP(string x,int op,   int    tp_type, double value)                  ;
+            double CalculateSL(string x, int op,double op_Price,   int    sl_type, double value)  ;
             bool   CloseAllOrders(int Magic_Number)                                     ;
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
             bool   PlaceOrderHidden (int op,   double lot,     int Magic_Number ,int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, string comment);
+            bool   PlaceOrderPairs(string pairY, string pairX,int opY, int opX,double lotY, double lotX, int mg, string comment, int tptype, double tpval, int sltype, double slval );
             bool   TrailOrder(int type, double val, int magic)                          ;
             bool   isOrderOpen()                                                        ;
             bool   JumpToBreakeven(int magic,string comment,double when, double by)     ;
@@ -177,6 +180,62 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
    }
    return tp                                                    ;
 }
+double MoneyManagement:: CalculateTP(string x, int op,   int    tp_type, double value)
+{
+   double tp    = 0.0                                            ;
+   //double atr   = i.iAtr(0)                                      ;
+   double atr =0.0;
+  
+   double point = MarketInfo(x,MODE_POINT)                ;
+   int    digit = (int)MarketInfo(x,MODE_DIGITS)          ;
+   double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+    atr= NormalizeDouble(iATR(x, 0,14,0),digit);
+   RefreshRates()                                                ;
+   double _Ask =MarketInfo(x,MODE_ASK);
+   double _Bid =MarketInfo(x,MODE_BID);
+   //--------------------------------------------
+   if(op == OP_BUY)
+   {
+      switch(tp_type)
+        {
+          case 0:
+             tp = _Ask+(value*point)                             ;
+             Print("Case 0 fix: Tp[",tp,"]")                    ;
+             break                                              ;
+          case 1:
+             tp = _Ask+(atr*value)                               ;
+             Print("Case 1 volatility: Tp[",tp,"]")                    ;
+             break                                              ;
+          case 2:
+             Print("Mid Band: ",mid)                            ;
+             tp = mid                                           ;
+             Print("Case 3: mid Tp[",tp,"]")                    ;
+             break                                              ;
+          default :
+             Print("Error in Tp Type. [",tp_type,"]")           ;
+             break                                              ;
+        }
+   }
+   else if (op == OP_SELL)
+   {
+      switch(tp_type)
+        {
+          case 0:
+             tp = _Bid -(value*point)                            ;
+             Print("Case 0: fix Tp[",tp,"]")                    ;
+             break                                              ;
+          case 1:
+             tp = _Bid -(atr*value)                              ;
+             Print("Case 1: volatility Tp[",tp,"]")                    ;
+             break                                              ;
+          case 2:
+             tp = mid                                           ;
+             Print("Case 1: mid Tp[",tp,"]")                    ;
+             break                                              ;
+        }   
+   }
+   return tp                                                    ;
+}
 
 double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, double value)
 {
@@ -245,6 +304,77 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
     }
     return sl                                                   ;
 }
+double MoneyManagement:: CalculateSL(string x,int op, double openPrice  ,int    sl_type, double value)
+{
+   double sl    = 0.0                                           ;
+   double atr   = 0.0                                     ;
+   double point = MarketInfo(x,MODE_POINT)               ;
+   int    digit = (int)MarketInfo(x,MODE_DIGITS)         ;
+   double minsl = MarketInfo(x,MODE_STOPLEVEL)           ;
+   minsl        = NormalizeDouble(minsl*point,digit)           ;
+    atr= NormalizeDouble(iATR(x, 0,14,0),digit);
+   double _Ask =MarketInfo(x,MODE_ASK);
+   double _Bid =MarketInfo(x,MODE_BID);
+   
+   RefreshRates()                                               ;
+   //--------------------------------------------
+   if(op == OP_BUY)
+   {
+       switch(sl_type)
+         {
+            case 0:
+               sl = _Bid -(value*point)                          ;
+               Print("Case Fix:Stop Loss [",sl,"]")             ;
+               break                                            ;
+            case 1:
+               sl = _Bid -(atr*value)                            ;
+               Print("Case Volatility:Stop Loss [",sl,"]")      ;
+               break                                            ;
+             default :
+               Print("Error in SL Type. [",sl_type,"]")         ;
+               break                                            ;
+          }
+       if(openPrice-sl>=minsl)
+           {
+            sl = NormalizeDouble(sl,digit)                      ;
+            Print("Stop Loss [",sl,"]")                         ;
+           }
+      if(openPrice-sl<minsl)
+           {
+            double toAdd = minsl+(55*point)                     ;
+            sl           = openPrice-toAdd                      ; 
+            sl           = NormalizeDouble(sl,digit)            ;
+            Print("Small Stop Loss [",sl,"]")                   ;
+           }   
+   }
+   else if(op==OP_SELL)
+    {  
+      switch(sl_type)
+           {
+             case 0:
+                  sl = _Bid+(value*point)                        ;
+                  Print("Case Fix:Stop Loss [",sl,"]")          ;
+                  break                                         ;
+             case 1:
+                  sl=_Bid+(atr*value)                            ;
+                  Print("Case Volatility:Stop Loss [",sl,"]")   ;
+                  break                                         ;
+           }       
+         if(sl-openPrice>=minsl )
+           {
+            sl          = NormalizeDouble(sl,digit)             ;
+            Print("Stop Loss [",sl,"]")                         ;
+            }
+         else if(sl-openPrice<minsl)
+           {
+            double toAdd = minsl+(7.0 *point)                   ;
+            sl           = openPrice+toAdd                      ;
+            sl           = NormalizeDouble(sl,digit)            ;
+            Print("Small Stop Loss [",sl,"]")                   ;
+           }
+    }
+    return sl                                                   ;
+}
 bool MoneyManagement::   PlaceOrder (int op,   double lot,     double tp, double sl,int mg ,int comment)
 {
    int ticket   = 0                                                             ;
@@ -273,6 +403,46 @@ bool MoneyManagement::   PlaceOrderHidden (int op,   double lot,int mg ,int comm
       ticket =OrderSend(_Symbol,OP_SELL,lot,Bid,Slippage,0,0,(string)comment,mg);
    if(Ticket_Check(ticket)==true)return true                                    ;
    return false                                                                 ;
+}
+bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, int opX, double lotY, double lotX, int mg, string comment, int tptype, double tpval, int sltype, double slval )
+{
+   int ticketY =0;
+   int ticketX=0;
+   double pY =0.0; double pX =0.0;
+   if(opY==OP_BUY)pY=MarketInfo(pair_Y,MODE_ASK);
+   else if(opY == OP_SELL)pY=MarketInfo(pair_Y,MODE_BID);
+   if(opX==OP_BUY)pX=MarketInfo(pair_X,MODE_ASK);
+   else if(opX == OP_SELL)pX=MarketInfo(pair_X,MODE_BID);
+   Print("pY[",pY,"] pX[",pX,"]");
+   ticketY = OrderSend(pair_Y,opY,lotY,pY,Slippage,0,0,comment,mg,0,Yellow);
+   ticketX = OrderSend(pair_X,opX,lotX,pX,Slippage,0,0,comment,mg,0,Yellow);
+   Print("TicketY[",ticketY,"] TicketX[",ticketX,"]");
+   
+   if(Ticket_Check(ticketY))  {
+      Print("Y Found");
+      double tp = 0.0, sl = 0.0                                                 ;
+      if(OrderSelect(ticketY, SELECT_BY_TICKET,MODE_TRADES)>0){
+         double op_price =OrderOpenPrice()                                      ;
+         tp = CalculateTP(pair_Y,opY,tptype,tpval)                                      ;
+         sl = CalculateSL(pair_Y,opY,op_price,sltype,slval)                             ;
+         bool res=OrderModify(ticketY,op_price,sl,tp,0,0)                ; 
+         ModifyCheck(res);
+         }
+   }
+   if(Ticket_Check(ticketX))
+   {
+      Print("X Found");
+      double tp = 0.0, sl = 0.0                                                 ;
+      if(OrderSelect(ticketX, SELECT_BY_TICKET,MODE_TRADES)>0){
+         double op_price =OrderOpenPrice()                                      ;
+         tp = CalculateTP(pair_X,opX,tptype,tpval)                                      ;
+         sl = CalculateSL(pair_X,opX,op_price,sltype,slval)                             ;
+         bool res=OrderModify(ticketX,op_price,sl,tp,0,0)                ;
+         ModifyCheck(res);
+         }
+   }      
+ 
+   return false;
 }
 bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {

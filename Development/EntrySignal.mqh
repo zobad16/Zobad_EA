@@ -817,9 +817,13 @@ bool EntrySignal::isOrder(int &ticket ,int magic, int opcode){
 int EntrySignal:: PR_Directional(string y, string x)
 {
    double bb_up = ind.iPR(y,x,1,4);//get upper
-   double bb_low= ind.iPR(y,x,1,3);//get lower
+   double bb_low = ind.iPR(y,x,1,3);//get lower
+   double bb_mid = ind.iPR(y,x,1,1);
    double pr= ind.iPR(y,x,1,0);// get pr
-   if(pr>bb_up) return DIRECTIONAL_BUY;//if pr>upper return Directional Buy
-   else if(pr<bb_low) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
+   Print("bb_up[",bb_up,"] bb_low[",bb_low,"], bb_mid[",bb_mid,"], pr[",pr,"] ");
+   //if(pr>bb_up) return DIRECTIONAL_BUY;//if pr>upper return Directional Buy
+   if(pr>bb_mid) return DIRECTIONAL_BUY;
+   //else if(pr<bb_low) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
+   else if(pr<bb_mid) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
    else return FAIL_ERR;
 }   
