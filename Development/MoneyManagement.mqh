@@ -39,6 +39,7 @@ class MoneyManagement
             double CalculateSL(int op,double op_Price,   int    sl_type, double value)  ;
             double CalculateTP(string x,int op,   int    tp_type, double value)                  ;
             double CalculateSL(string x, int op,double op_Price,   int    sl_type, double value)  ;
+            bool   CloseOrder(int mg, string symbol)                                    ;  
             bool   CloseAllOrders(int Magic_Number)                                     ;
             bool   PlaceOrder (int op,   double lot,     double tp, double sl,int Magic_Number ,int comment);
             bool   PlaceOrderHidden (int op,   double lot,     int Magic_Number ,int comment);
@@ -418,7 +419,8 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
    ticketX = OrderSend(pair_X,opX,lotX,pX,Slippage,0,0,comment,mg,0,Yellow);
    Print("TicketY[",ticketY,"] TicketX[",ticketX,"]");
    
-   if(Ticket_Check(ticketY))  {
+   if(!Ticket_Check(ticketY)) return false;
+   else  {
       Print("Y Found");
       double tp = 0.0, sl = 0.0                                                 ;
       if(OrderSelect(ticketY, SELECT_BY_TICKET,MODE_TRADES)>0){
@@ -429,8 +431,8 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
          ModifyCheck(res);
          }
    }
-   if(Ticket_Check(ticketX))
-   {
+   if(!Ticket_Check(ticketX))return false;
+   else{
       Print("X Found");
       double tp = 0.0, sl = 0.0                                                 ;
       if(OrderSelect(ticketX, SELECT_BY_TICKET,MODE_TRADES)>0){
@@ -442,7 +444,7 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
          }
    }      
  
-   return false;
+   return true;
 }
 bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {
@@ -567,7 +569,29 @@ bool MoneyManagement:: CloseAllOrders(int Magic_Numbe)
    }if(isOrdersTotal(Magic_Numbe)==0)return true;
    return false;
 }
- 
+bool MoneyManagement::  CloseOrder(int mg, string symbol)
+{
+   // int Slippage =33;
+   int totalOpenOrders = isOrdersTotal(mg);
+   int total= OrdersTotal();
+   for(int ii=total-1;ii>=0;ii--){
+     if(OrderSelect(ii,SELECT_BY_POS)==true){
+        if(OrderSymbol()==symbol && OrderMagicNumber()==mg){
+            if(OrderType()==OP_BUY){
+                 if(!OrderClose(OrderTicket(),OrderLots(),MarketInfo(OrderSymbol(),MODE_BID),Slippage,clrAntiqueWhite))
+                    Print("Order Send Failed with Error[",GetLastError(),"]");
+                        //continue;
+             }
+            if(OrderType()==OP_SELL){
+                  if(!OrderClose(OrderTicket(),OrderLots(),MarketInfo(OrderSymbol(),MODE_ASK),Slippage,clrAntiqueWhite))
+                    Print("Order Send Failed with Error[",GetLastError(),"]");
+                        //continue;
+             }          
+        }
+     }
+   }if(isOrdersTotal(mg)<totalOpenOrders)return true;
+   return false;
+} 
 int MoneyManagement::isOrdersTotal(int mg)
 {
    int count =0;

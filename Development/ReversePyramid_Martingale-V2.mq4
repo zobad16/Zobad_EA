@@ -143,21 +143,26 @@ void OnTick()
          Print("Closed. _Cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
          startFlag = false;
         }
+        
         mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
+        //Print("Count[",_count,"]");
         if(isOrdersTotal(Magic_Number)<1 ){         
-         if( IsNewBar()){
+         if( IsNewBar() && (_count ==0 || _count==leg)){
             int ccode = IsSignal(_strat_type,_range);
             if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
                if(ccode == DIRECTIONAL_BUY) mm.PlaceOrderPairs(pairY,pairX,OP_BUY,OP_SELL,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
                else if(ccode == DIRECTIONAL_SELL) mm.PlaceOrderPairs(pairY,pairX,OP_SELL,OP_BUY,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
-               _count = 1;
+               if(isOrdersTotal(Magic_Number)==2)_count = 1;
+               Print("New Order");
             }
             //if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
             //else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
          }   
       }
-      else{/*int errCode=StopHit(OP_BUY,_tp,_sl);*/CloseOrder();CutAndReverse();}
-     } 
+      /*if(isOrdersTotal(Magic_Number)>0 || _count >1 )*/else{/*int errCode=StopHit(OP_BUY,_tp,_sl);CloseOrder();*/CutAndReverse(pairY,pairX);CutAndReverse(pairY,pairX);/*Print("Count[",_count,"]");Print("isOrdersTotal[",isOrdersTotal(Magic_Number),"]");*/}
+      
+     }
+     Comment("_Count[",(string)_count,"] total Orders[",isOrdersTotal(Magic_Number),"]"); 
   }
 //+------------------------------------------------------------------+
 void CloseOrder(){
@@ -202,7 +207,7 @@ int isOrdersTotal(int mg)
    int total = OrdersTotal();
    for(int i = 0 ;i<total;i++){
       if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0){
-         if(OrderMagicNumber()==mg && OrderSymbol()== Symbol()){
+         if(OrderMagicNumber()==mg /*&& OrderSymbol()== Symbol()*/){
                count+=1;               
          }      
       }
@@ -322,6 +327,49 @@ int CutAndReverse(){
     }                
    return(0);
 }
+int CutAndReverse(string y, string x){
+   int op_y=0,op_x=0;
+   double lot_x=0.0,lot_y=0.0;
+   int value=isOrdersTotal(Magic_Number);    
+  // Print("Value[",value,"]");  
+   if(value==0){
+      Print("Cut and reverse value = 0");      
+      if(_count<leg){
+         LastOrderOperation(y,op_y, lot_y);
+         LastOrderOperation(x,op_x, lot_x);
+         Print("lot_y[",lot_y,"] lot_x[",lot_x,"]");
+         if(mm.PlaceOrderPairs(y,x,op_y,op_x,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c",TP_Type,TP_Value,SL_Type,SL_Value))
+           {/*if(isOrdersTotal(Magic_Number)>1)*/ _count++;}                
+         else 
+            Print("Error: Unable to Reverse");
+      }
+       else  return FAIL;
+    } 
+    else if(value == 1){
+      //Close Order
+     if( mm.CloseOrder(Magic_Number,x)) return 1;
+     else if( mm.CloseOrder(Magic_Number,y)) return 1;
+     else return -1;
+    }               
+   return(0);
+}
+void LastOrderOperation(string symbol, int & operation, double &lot){
+   for(int i=OrdersHistoryTotal()-1; i>0; i--)       //Cycle for all orders..
+   {                                        //displayed in the terminal
+        if(OrderSelect(i,SELECT_BY_POS,MODE_HISTORY))//If there is the next one
+        { 
+            if(OrderMagicNumber() == Magic_Number && OrderSymbol()==symbol)
+            {
+               operation = OrderType();
+               lot =OrderLots();   
+               break;                                   
+            }
+            else continue;
+         }
+    }
+
+}
+
 int IsSignal(int strat, double range){
    //buyDir=1, buyRev=11,sellDir-1,sellRev=-11, fail =FAIL
    double ma = ind.iBB(1,MODE_MAIN);
@@ -377,7 +425,8 @@ void CalculatePairLot(string y, string x){
    double y_minlot = MarketInfo(y,MODE_MINLOT);
    double x_minlot = MarketInfo(x,MODE_MINLOT);
    //---------------------------------------
-   //Check how to equalize lot size 
+   //Check how to equalize lot size
+   //work in progress... 
 
 
 }
