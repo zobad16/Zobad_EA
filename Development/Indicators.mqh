@@ -23,6 +23,7 @@ class Indicators
             ENUM_TIMEFRAMES _chartTimeFrame;
    public:
             double          iAtr(int index);
+            double          iPRAtr(string y, string x,int period,int index);
             double          iBB(int index, int mode);
             double          iLR(int index, int mode);
             double          iLR2(int index,int mode);
@@ -56,6 +57,14 @@ double Indicators::iAtr(int index)
 {
    double atr =0.0;
    atr= NormalizeDouble(iATR(NULL, 0,_period_atr,index),Digits);   
+   return atr;
+}
+double Indicators::iPRAtr(string y, string x,int period,int index)
+{
+   double atr =0.0;
+   string path = "PR_ATR.EX4";
+   atr = iCustom(NULL,0,path,y,x,period,0,index);
+   //atr= NormalizeDouble(iATR(NULL, 0,_period_atr,index),Digits);   
    return atr;
 }
 double Indicators::iBB(int index, int mode)

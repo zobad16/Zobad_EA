@@ -37,6 +37,8 @@ class MoneyManagement
             double CalculatePositionSizeHedge(int    magic,  int comment)               ;            
             double CalculateTP(int op,   int    tp_type, double value)                  ;
             double CalculateSL(int op,double op_Price,   int    sl_type, double value)  ;
+            double CalculatePairTP(string y,string x,int period, int op,  int tp_type, double value);
+            double CalculatePairSL(string y,string x,int period, int op,  int sl_type, double value);
             double CalculateTP(string x,int op,   int    tp_type, double value)                  ;
             double CalculateSL(string x, int op,double op_Price,   int    sl_type, double value)  ;
             bool   CloseOrder(int mg, string symbol)                                    ;  
@@ -46,6 +48,7 @@ class MoneyManagement
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, int comment);
             bool   PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int Magic_Number, string comment);
             bool   PlaceOrderPairs(string pairY, string pairX,int opY, int opX,double lotY, double lotX, int mg, string comment, int tptype, double tpval, int sltype, double slval );
+            bool   PlaceOrderPairsHidden(string pair_Y, string pair_X,int opY, int opX, double lotY, double lotX, int mg, string comment);
             bool   TrailOrder(int type, double val, int magic)                          ;
             bool   isOrderOpen()                                                        ;
             bool   JumpToBreakeven(int magic,string comment,double when, double by)     ;
@@ -237,7 +240,106 @@ double MoneyManagement:: CalculateTP(string x, int op,   int    tp_type, double 
    }
    return tp                                                    ;
 }
+double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  int tp_type, double value)
+{
+   double tp    = 0.0                                            ;   
+   double atr =0.0;  
+   double point = MarketInfo(x,MODE_POINT)                ;
+   int    digit = (int)MarketInfo(x,MODE_DIGITS)          ;
+   double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
+   double pr = i.iPR(y,x,1,0);
 
+   //--------------------------------------------
+   if(op == OP_BUY)
+   {
+      switch(tp_type)
+        {
+          case 0:
+             tp = pr+(value*point)                             ;
+             Print("Case 0 fix: Tp[",tp,"]")                    ;
+             break                                              ;
+          case 1:
+             tp = pr+(atr*value)                               ;
+             Print("Case 1 volatility: Tp[",tp,"]")                    ;
+             break                                              ;
+          case 2:
+             Print("Mid Band: ",mid)                            ;
+             tp = mid                                           ;
+             Print("Case 3: mid Tp[",tp,"]")                    ;
+             break                                              ;
+          default :
+             Print("Error in Tp Type. [",tp_type,"]")           ;
+             break                                              ;
+        }
+   }
+   else if (op == OP_SELL)
+   {
+      switch(tp_type)
+        {
+          case 0:
+             tp = pr -(value*point)                            ;
+             Print("Case 0: fix Tp[",tp,"]")                    ;
+             break                                              ;
+          case 1:
+             tp = pr -(atr*value)                              ;
+             Print("Case 1: volatility Tp[",tp,"]")                    ;
+             break                                              ;
+          case 2:
+             tp = mid                                           ;
+             Print("Case 1: mid Tp[",tp,"]")                    ;
+             break                                              ;
+        }   
+   }
+   return tp                                                    ;
+}
+double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  int sl_type, double value)
+{
+   double sl    = 0.0                                           ;
+   double atr   = i.iAtr(0)                                     ;
+   double point = MarketInfo(y,MODE_POINT)               ;
+   //int    digit = (int)MarketInfo(Symbol(),MODE_DIGITS)         ;
+   double minsl = MarketInfo(y,MODE_STOPLEVEL)           ;
+   minsl        = NormalizeDouble(minsl*point,Digits)           ;
+   int    digit = (int)MarketInfo(y,MODE_DIGITS)          ;
+   double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
+   double pr = i.iPR(y,x,1,0);
+   RefreshRates()                                               ;
+   //--------------------------------------------
+   if(op == OP_BUY)
+   {
+       switch(sl_type)
+         {
+            case 0:
+               sl = pr -(value*point)                          ;
+               Print("Case Fix:Stop Loss [",sl,"]")             ;
+               break                                            ;
+            case 1:
+               sl = pr -(atr*value)                            ;
+               Print("Case Volatility:Stop Loss [",sl,"]")      ;
+               break                                            ;
+             default :
+               Print("Error in SL Type. [",sl_type,"]")         ;
+               break                                            ;
+          }
+   }
+   else if(op==OP_SELL)
+    {  
+      switch(sl_type)
+           {
+             case 0:
+                  sl = pr+(value*point)                        ;
+                  Print("Case Fix:Stop Loss [",sl,"]")          ;
+                  break                                         ;
+             case 1:
+                  sl=pr+(atr*value)                            ;
+                  Print("Case Volatility:Stop Loss [",sl,"]")   ;
+                  break                                         ;
+           }
+    }
+    return sl                                                   ;
+}
 double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, double value)
 {
    double sl    = 0.0                                           ;
@@ -421,11 +523,12 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
    
    if(!Ticket_Check(ticketY)) return false;
    else  {
-      Print("Y Found");
+      //Print("Y Found");
       double tp = 0.0, sl = 0.0                                                 ;
       if(OrderSelect(ticketY, SELECT_BY_TICKET,MODE_TRADES)>0){
          double op_price =OrderOpenPrice()                                      ;
          tp = CalculateTP(pair_Y,opY,tptype,tpval)                                      ;
+         tp = CalculatePairTP(pair_Y,pair_X,14,opY,tptype,tpval); //Save this value in &tp
          sl = CalculateSL(pair_Y,opY,op_price,sltype,slval)                             ;
          bool res=OrderModify(ticketY,op_price,sl,tp,0,0)                ; 
          ModifyCheck(res);
@@ -433,7 +536,7 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
    }
    if(!Ticket_Check(ticketX))return false;
    else{
-      Print("X Found");
+      //Print("X Found");
       double tp = 0.0, sl = 0.0                                                 ;
       if(OrderSelect(ticketX, SELECT_BY_TICKET,MODE_TRADES)>0){
          double op_price =OrderOpenPrice()                                      ;
@@ -446,6 +549,26 @@ bool MoneyManagement :: PlaceOrderPairs(string pair_Y, string pair_X,int opY, in
  
    return true;
 }
+bool MoneyManagement :: PlaceOrderPairsHidden(string pair_Y, string pair_X,int opY, int opX, double lotY, double lotX, int mg, string comment)
+{
+   int ticketY =0;
+   int ticketX=0;
+   double pY =0.0; double pX =0.0;
+   if(opY==OP_BUY)pY=MarketInfo(pair_Y,MODE_ASK);
+   else if(opY == OP_SELL)pY=MarketInfo(pair_Y,MODE_BID);
+   if(opX==OP_BUY)pX=MarketInfo(pair_X,MODE_ASK);
+   else if(opX == OP_SELL)pX=MarketInfo(pair_X,MODE_BID);
+   Print("pY[",pY,"] pX[",pX,"]");
+   ticketY = OrderSend(pair_Y,opY,lotY,pY,Slippage,0,0,comment,mg,0,Yellow);
+   ticketX = OrderSend(pair_X,opX,lotX,pX,Slippage,0,0,comment,mg,0,Yellow);
+   Print("TicketY[",ticketY,"] TicketX[",ticketX,"]");
+   
+   if(!Ticket_Check(ticketY)) return false;
+   if(!Ticket_Check(ticketX))return false;
+ 
+   return true;
+}
+
 bool  MoneyManagement::PlaceOrder(int op , double lot, int tpType, double tpval,int slType,double slval,int mg, int comment)
 {
    int ticket   = 0                                                             ;

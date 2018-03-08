@@ -68,7 +68,7 @@ bool                    useConsecutive     = false     ;             //Use Conse
 int                     noConsqLossAllowed = 3         ;             //Consecutive Losses Allowed
 double                  percentReduction   = 5         ;             //Lot Size Percent Reduction
 extern string          setLot=     "-------Lot Setting -------"       ;
-extern LotType          lotType            = AUTO      ;             //Lot Type
+extern LotType          lotType            = MANUAL      ;             //Lot Type
 extern double           _risk              = 0.02       ;             //%Available Balance::Lot
 extern double           LotSize            = 0.01      ;             //Position:: Lot Size(Manual)
 extern string          order1=     "-------Order -------"             ;             //Order 1 Settings
@@ -76,8 +76,8 @@ bool                   order1Open         =  false    ;
 extern Strat_typeII      _strat_type        = _DIRECTIONAL ;           //Strategy:: Type      
 extern bool             useStrategy1       = true      ;             //Strategy:: Use Strategy
 bool                    useHedge           = false     ;             //Strategy:: Use Hegde 
-extern string           pairY              = "US30"    ;
-extern string           pairX              = "US500"   ;    
+extern string           pairY              = "US30"    ;             //Pair1
+extern string           pairX              = "US500"   ;             //Pair2
  string          reversalSet="-------Reversal Strategy -------" ;             //Reversal TP and SL Settings
 extern bool             visible            = true      ;
 extern Take_Profit_Type TP_Type            = VOLATILITY;             //TP:: Type
@@ -149,11 +149,20 @@ void OnTick()
         if(isOrdersTotal(Magic_Number)<1 ){         
          if( IsNewBar() && (_count ==0 || _count==leg)){
             int ccode = IsSignal(_strat_type,_range);
-            if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
+           /* if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
                if(ccode == DIRECTIONAL_BUY) mm.PlaceOrderPairs(pairY,pairX,OP_BUY,OP_SELL,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
                else if(ccode == DIRECTIONAL_SELL) mm.PlaceOrderPairs(pairY,pairX,OP_SELL,OP_BUY,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
                if(isOrdersTotal(Magic_Number)==2)_count = 1;
-               Print("New Order");
+               Print("New Order");*/
+            if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
+               if(ccode == DIRECTIONAL_BUY)
+                  PlaceOrderPair( OP_BUY,OP_SELL,"Pair Directional");
+               else if(ccode == DIRECTIONAL_SELL) 
+                  PlaceOrderPair(OP_SELL,OP_BUY,"Pair Directional");
+               if(isOrdersTotal(Magic_Number)==2)_count = 1;
+               Print("New Order");   
+               
+               
             }
             //if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
             //else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
@@ -228,7 +237,17 @@ bool IsNewBar()
       return true;
      }
   }            
-
+bool PlaceOrderPair(int op_y, int op_x,string comment)
+{
+  // double _tp =0.0, _sl = 0.0;
+   int ATR_period = 14;
+   mm.PlaceOrderPairsHidden(pairY,pairX,op_y,op_x,LotSize,LotSize,Magic_Number,comment);
+   _tp = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
+   _sl = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+    _count++;
+   return false;
+   //return ();
+}
 bool PlaceOrder(int strat, int op){
    double openprice=0.0, lot=0.0,tp=0.0,sl=0.0;
    string comment;
