@@ -20,6 +20,7 @@ Indicators      *ind  ;
 
 enum Strat_typeII
             {
+               _PAIR_REVERSAL = 10,   //Pair Reversal
                _PAIR_DIRECTIONAL = 9, //Pair Directional
                _DIRECTIONAL = 4,  //Directional
                _REVERSAL    = 5,  //Reversal
@@ -40,7 +41,7 @@ enum Take_Profit_Type{
    
    FIXED=0,
    VOLATILITY=1,
-  // MID_BB=2
+   MID_BB=2
 };
 enum _type
 {
@@ -73,15 +74,15 @@ extern double           _risk              = 0.02       ;             //%Availab
 extern double           LotSize            = 0.01      ;             //Position:: Lot Size(Manual)
 extern string          order1=     "-------Order -------"             ;             //Order 1 Settings
 bool                   order1Open         =  false    ; 
-extern Strat_typeII      _strat_type        = _DIRECTIONAL ;           //Strategy:: Type      
+extern Strat_typeII      _strat_type        = _PAIR_REVERSAL ;           //Strategy:: Type      
 extern bool             useStrategy1       = true      ;             //Strategy:: Use Strategy
 bool                    useHedge           = false     ;             //Strategy:: Use Hegde 
 extern string           pairY              = "US30"    ;             //Pair1
 extern string           pairX              = "US500"   ;             //Pair2
  string          reversalSet="-------Reversal Strategy -------" ;             //Reversal TP and SL Settings
-extern bool             visible            = true      ;
-extern Take_Profit_Type TP_Type            = VOLATILITY;             //TP:: Type
-extern Take_Profit_Type SL_Type            = VOLATILITY;             //SL:: Type
+bool             visible            = false      ;
+extern Take_Profit_Type TP_Type            = MID_BB;             //TP:: Type
+extern Take_Profit_Type SL_Type            = MID_BB;             //SL:: Type
 extern double           TP_Value           =  3.0      ;             //TP:: Volatility/Fixed(Points)
 extern double           SL_Value           =  3.0      ;             //SL:: Volatility/Fixed(Points)
 extern double           _range             = 2.5       ;             
@@ -161,17 +162,23 @@ void OnTick()
                   PlaceOrderPair(OP_SELL,OP_BUY,"Pair Directional");
                if(isOrdersTotal(Magic_Number)==2)_count = 1;
                Print("New Order");   
-               
-               
+            }
+            else if(_strat_type == _PAIR_REVERSAL && ccode != FAIL){
+               if(ccode == REVERSAL_BUY)
+                  PlaceOrderPair( OP_BUY,OP_SELL,"Pair Reversal");
+               else if(ccode == REVERSAL_SELL) 
+                  PlaceOrderPair(OP_SELL,OP_BUY,"Pair Reversal");
+               if(isOrdersTotal(Magic_Number)==2)_count = 1;
+               Print("New Order");   
             }
             //if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
             //else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
          }   
       }
-      /*if(isOrdersTotal(Magic_Number)>0 || _count >1 )*/else{/*int errCode=StopHit(OP_BUY,_tp,_sl);CloseOrder();*/CutAndReverse(pairY,pairX);CutAndReverse(pairY,pairX);/*Print("Count[",_count,"]");Print("isOrdersTotal[",isOrdersTotal(Magic_Number),"]");*/}
+      /*if(isOrdersTotal(Magic_Number)>0 || _count >1 )*/else{CloseOrderPair(pairY,pairX);CutAndReverse(pairY,pairX);CutAndReverse(pairY,pairX);/*Print("Count[",_count,"]");Print("isOrdersTotal[",isOrdersTotal(Magic_Number),"]");*/}
       
      }
-     Comment("_Count[",(string)_count,"] total Orders[",isOrdersTotal(Magic_Number),"]"); 
+     Comment("_Count[",(string)_count,"] total Orders[",isOrdersTotal(Magic_Number),"],TP[",_tp,"], SL[",_sl,"]"); 
   }
 //+------------------------------------------------------------------+
 void CloseOrder(){
@@ -194,6 +201,27 @@ void CloseOrder(){
    else if(op==OP_SELL && errCode == 1){Print("Take Profit");if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
    else if(op==OP_SELL && errCode == -1){Print("Stop Loss");if(OrderClose(ticket,lot,Ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
 }
+void CloseOrderPair(string y, string x){
+   int ticket=0,op = 0;
+   double lot=0.0,openprice=0.0;
+   for(int i =0; i<OrdersTotal(); i++){
+      if(OrderSelect(i,SELECT_BY_POS,MODE_OPEN)>0){
+         if(OrderMagicNumber()==Magic_Number && (OrderSymbol()==y)){//selecting only pair y because its also use for opening
+            ticket = OrderTicket();
+            lot = OrderLots();
+            openprice = OrderOpenPrice();
+            op =OrderType();
+            int errCode = StopHitPair(op);
+            double bid = MarketInfo(OrderSymbol(),MODE_BID);
+            double ask = MarketInfo(OrderSymbol(),MODE_ASK);
+            if( (op==OP_BUY && errCode == 1) ){Print("Take Profit");if(OrderClose(ticket,lot,bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+            if(  op==OP_BUY && errCode == -1 ){Print("Stop Loss");if(OrderClose(ticket,lot,bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+            else if(op==OP_SELL && errCode == 1){Print("Take Profit");if(OrderClose(ticket,lot,ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+            else if(op==OP_SELL && errCode == -1){Print("Stop Loss");if(OrderClose(ticket,lot,ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}      
+         }
+      }
+   }
+}
 int StopHit(int op, double tp, double sl)
 {
    //0=fail, 1=tp,-1=sl
@@ -207,6 +235,30 @@ int StopHit(int op, double tp, double sl)
          if(Ask<tp){/*Print("ask[",Ask,"]bid[",Bid,"]");*/return(1);}
          else if(Ask>sl){/*Print("ask[",Ask,"]bid[",Bid,"]");*/ return(-1);}
       }
+   }
+   return(0);
+}
+int StopHitPair(int op)
+{
+   //0=fail, 1=tp,-1=sl
+   if(!visible){
+         //Check PRAtr value if>=_tp return 1
+         double pr_atr = ind.iPR(pairY,pairX,0,0);
+         if(op == OP_BUY)
+         {
+             if(pr_atr >= _tp){ Print("TP");return 1;}
+         //else if PRATR<= _sl return -1
+            else if(pr_atr <= _sl){Print("SL"); return -1;}
+         }   
+         else if(op == OP_SELL)
+         {
+             if(pr_atr <= _tp){ Print("TP"); return 1;}
+         //else if PRATR<= _sl return -1
+            else if(pr_atr >= _sl){Print("SL"); return -1;}
+         }      
+         //else return 0
+         else return 0;     
+      
    }
    return(0);
 }   
@@ -348,19 +400,32 @@ int CutAndReverse(){
 }
 int CutAndReverse(string y, string x){
    int op_y=0,op_x=0;
-   double lot_x=0.0,lot_y=0.0;
+   double lot_x=0.0,lot_y=0.0, profitX=0.0, profitY=0.0;
    int value=isOrdersTotal(Magic_Number);    
   // Print("Value[",value,"]");  
    if(value==0){
       Print("Cut and reverse value = 0");      
       if(_count<leg){
-         LastOrderOperation(y,op_y, lot_y);
-         LastOrderOperation(x,op_x, lot_x);
+         LastOrderOperation(y,op_y, lot_y,profitY);
+         LastOrderOperation(x,op_x, lot_x, profitX);
          Print("lot_y[",lot_y,"] lot_x[",lot_x,"]");
-         if(mm.PlaceOrderPairs(y,x,op_y,op_x,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c",TP_Type,TP_Value,SL_Type,SL_Value))
-           {/*if(isOrdersTotal(Magic_Number)>1)*/ _count++;}                
-         else 
-            Print("Error: Unable to Reverse");
+         
+         if(profitY+profitX<0)
+         {
+           if(mm.PlaceOrderPairsHidden(y,x,op_x,op_y,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c"))
+           {/*if(isOrdersTotal(Magic_Number)>1)*/ 
+               _tp = NormalizeDouble( mm.CalculatePairTP(y,x,14,op_x,TP_Type,TP_Value),MarketInfo(y,MODE_DIGITS));
+               _sl = NormalizeDouble( mm.CalculatePairSL(y,x,14,op_x,SL_Type,SL_Value),MarketInfo(y,MODE_DIGITS));
+               _count++;               
+            }else  Print("Error: Unable to Reverse");
+         
+         }else
+         {
+            //Profit. Reset Counter
+            _tp = 0.0;
+            _sl =0.0;
+            _count = 0;
+         } 
       }
        else  return FAIL;
     } 
@@ -372,7 +437,7 @@ int CutAndReverse(string y, string x){
     }               
    return(0);
 }
-void LastOrderOperation(string symbol, int & operation, double &lot){
+void LastOrderOperation(string symbol, int & operation, double &lot, double & profit){
    for(int i=OrdersHistoryTotal()-1; i>0; i--)       //Cycle for all orders..
    {                                        //displayed in the terminal
         if(OrderSelect(i,SELECT_BY_POS,MODE_HISTORY))//If there is the next one
@@ -380,7 +445,8 @@ void LastOrderOperation(string symbol, int & operation, double &lot){
             if(OrderMagicNumber() == Magic_Number && OrderSymbol()==symbol)
             {
                operation = OrderType();
-               lot =OrderLots();   
+               lot =OrderLots();
+               profit = OrderProfit();   
                break;                                   
             }
             else continue;
@@ -427,6 +493,10 @@ int IsSignal(int strat, double range){
          int ccode = algo.PR_Directional(pairY,pairX);
          if(ccode == DIRECTIONAL_BUY  || ccode == DIRECTIONAL_SELL ){Print("Pair Breakin"); return ccode;}
       
+      }
+      else if(strat == _PAIR_REVERSAL){
+         int ccode = algo.PR_Reversal(pairY,pairX);
+         if(ccode == REVERSAL_BUY  || ccode == REVERSAL_SELL ){Print("Pair Breakout"); return ccode;}
       }
       return FAIL;   
 }

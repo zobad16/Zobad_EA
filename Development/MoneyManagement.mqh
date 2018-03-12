@@ -246,9 +246,10 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
    double atr =0.0;  
    double point = MarketInfo(x,MODE_POINT)                ;
    int    digit = (int)MarketInfo(x,MODE_DIGITS)          ;
-   double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   //double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   double mid   = i.iPR(y,x,0,1);
    atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
-   double pr = i.iPR(y,x,1,0);
+   double pr = i.iPR(y,x,0,0);
 
    //--------------------------------------------
    if(op == OP_BUY)
@@ -289,6 +290,9 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
              tp = mid                                           ;
              Print("Case 1: mid Tp[",tp,"]")                    ;
              break                                              ;
+          default :
+             Print("Error in Tp Type. [",tp_type,"]")           ;
+             break                                              ;   
         }   
    }
    return tp                                                    ;
@@ -302,9 +306,10 @@ double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  
    double minsl = MarketInfo(y,MODE_STOPLEVEL)           ;
    minsl        = NormalizeDouble(minsl*point,Digits)           ;
    int    digit = (int)MarketInfo(y,MODE_DIGITS)          ;
-   double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   //double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
+   double mid   = i.iPR(y,x,0,1);
    atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
-   double pr = i.iPR(y,x,1,0);
+   double pr = i.iPR(y,x,0,0);
    RefreshRates()                                               ;
    //--------------------------------------------
    if(op == OP_BUY)
@@ -319,6 +324,10 @@ double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  
                sl = pr -(atr*value)                            ;
                Print("Case Volatility:Stop Loss [",sl,"]")      ;
                break                                            ;
+            case 2:
+               sl = NormalizeDouble(pr - (mid - pr), MarketInfo(y,MODE_DIGITS));
+               Print("Case Mid:Stop Loss [",sl,"]")      ;
+               break;
              default :
                Print("Error in SL Type. [",sl_type,"]")         ;
                break                                            ;
@@ -336,6 +345,13 @@ double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  
                   sl=pr+(atr*value)                            ;
                   Print("Case Volatility:Stop Loss [",sl,"]")   ;
                   break                                         ;
+             case 2:
+                  sl = NormalizeDouble(pr + (pr - mid), MarketInfo(y,MODE_DIGITS));;
+                  Print("Case Mid:Stop Loss [",sl,"]")      ;
+                  break;     
+             default :
+             Print("Error in sl Type. [",sl_type,"]")           ;
+             break                                              ;  
            }
     }
     return sl                                                   ;
