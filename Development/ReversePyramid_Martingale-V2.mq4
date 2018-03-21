@@ -71,7 +71,8 @@ double                  percentReduction   = 5         ;             //Lot Size 
 extern string          setLot=     "-------Lot Setting -------"       ;
 extern LotType          lotType            = MANUAL      ;             //Lot Type
 extern double           _risk              = 0.02       ;             //%Available Balance::Lot
-extern double           LotSize            = 0.01      ;             //Position:: Lot Size(Manual)
+extern double           LotSize            = 0.01      ;             //Position:: Lot SizeY(Manual)
+extern double           LotSizeX            = 0.01      ;             //Position:: Lot Size PairX(Manual)
 extern string          order1=     "-------Order -------"             ;             //Order 1 Settings
 bool                   order1Open         =  false    ; 
 extern Strat_typeII      _strat_type        = _PAIR_REVERSAL ;           //Strategy:: Type      
@@ -148,7 +149,7 @@ void OnTick()
         mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
         //Print("Count[",_count,"]");
         if(isOrdersTotal(Magic_Number)<1 ){         
-         if( IsNewBar() && (_count ==0 || _count==leg)){
+         if( IsNewBar()/* && (_count ==0 || _count==leg)*/){
             int ccode = IsSignal(_strat_type,_range);
            /* if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
                if(ccode == DIRECTIONAL_BUY) mm.PlaceOrderPairs(pairY,pairX,OP_BUY,OP_SELL,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
@@ -214,7 +215,7 @@ void CloseOrderPair(string y, string x){
             int errCode = StopHitPair(op);
             double bid = MarketInfo(OrderSymbol(),MODE_BID);
             double ask = MarketInfo(OrderSymbol(),MODE_ASK);
-            if( (op==OP_BUY && errCode == 1) ){Print("Take Profit");if(OrderClose(ticket,lot,bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
+            if( (op==OP_BUY && errCode == 1) ){Print("Take Profit");if(OrderClose(ticket,lot,bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;/*_count = 0;*/}
             if(  op==OP_BUY && errCode == -1 ){Print("Stop Loss");if(OrderClose(ticket,lot,bid,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
             else if(op==OP_SELL && errCode == 1){Print("Take Profit");if(OrderClose(ticket,lot,ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}
             else if(op==OP_SELL && errCode == -1){Print("Stop Loss");if(OrderClose(ticket,lot,ask,3,clrDarkMagenta)==true)_tp=0.0;_sl=0.0;}      
@@ -293,10 +294,20 @@ bool PlaceOrderPair(int op_y, int op_x,string comment)
 {
   // double _tp =0.0, _sl = 0.0;
    int ATR_period = 14;
-   mm.PlaceOrderPairsHidden(pairY,pairX,op_y,op_x,LotSize,LotSize,Magic_Number,comment);
-   _tp = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
-   _sl = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
-    _count++;
+   mm.PlaceOrderPairsHidden(pairY,pairX,op_y,op_x,LotSize,LotSizeX,Magic_Number,comment);
+   if(_strat_type == _PAIR_REVERSAL)
+   {
+      _tp = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
+      _sl = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+      _count++;
+   }
+   else if(_strat_type == _PAIR_DIRECTIONAL)
+   {
+      _sl = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
+      _tp = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+      _count++;   
+   }   
+   
    return false;
    //return ();
 }

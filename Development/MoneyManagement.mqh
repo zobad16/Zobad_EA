@@ -248,7 +248,7 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
    int    digit = (int)MarketInfo(x,MODE_DIGITS)          ;
    //double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
    double mid   = i.iPR(y,x,0,1);
-   atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
+   //atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
    double pr = i.iPR(y,x,0,0);
 
    //--------------------------------------------
