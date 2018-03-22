@@ -21,7 +21,8 @@ Indicators      *ind  ;
 enum Strat_typeII
             {
                _PAIR_REVERSAL = 10,   //Pair Reversal
-               _PAIR_DIRECTIONAL = 9, //Pair Directional
+               _PAIR_DIRECTIONAL = 9, //PairM Directional
+               _PAIR_MREVErsAL = 11, //PairM Reversal
                _DIRECTIONAL = 4,  //Directional
                _REVERSAL    = 5,  //Reversal
                //BOTH        = 1,  //Dir&Rev
@@ -39,9 +40,10 @@ enum LotType
 };
 enum Take_Profit_Type{
    
-   FIXED=0,
-   VOLATILITY=1,
-   MID_BB=2
+   FIXED = 0,
+   VOLATILITY = 1,
+   MID_BB = 2,
+   OPP_BAND = 3
 };
 enum _type
 {
@@ -241,10 +243,11 @@ int StopHit(int op, double tp, double sl)
 }
 int StopHitPair(int op)
 {
+   int period = 14;
    //0=fail, 1=tp,-1=sl
    if(!visible){
          //Check PRAtr value if>=_tp return 1
-         double pr_atr = ind.iPR(pairY,pairX,0,0);
+         double pr_atr = ind.iPR(pairY,pairX,period,0,0);
          if(op == OP_BUY)
          {
              if(pr_atr >= _tp){ Print("TP");return 1;}
@@ -303,8 +306,16 @@ bool PlaceOrderPair(int op_y, int op_x,string comment)
    }
    else if(_strat_type == _PAIR_DIRECTIONAL)
    {
-      _sl = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
-      _tp = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+      if(!TP_Type == MID_BB)
+      {
+         _tp = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
+         _sl = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+      }
+      else
+      {
+         _sl = mm.CalculatePairTP(pairY,pairX,ATR_period,op_y,TP_Type,TP_Value);
+         _tp = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
+      }
       _count++;   
    }   
    

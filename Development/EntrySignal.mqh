@@ -817,23 +817,28 @@ bool EntrySignal::isOrder(int &ticket ,int magic, int opcode){
 }   
 int EntrySignal:: PR_Directional(string y, string x)
 {
-   double bb_up = ind.iPR(y,x,1,4);//get upper
-   double bb_low = ind.iPR(y,x,1,3);//get lower
-   double bb_mid = ind.iPR(y,x,1,1);
-   double pr= ind.iPR(y,x,1,0);// get pr
+   int period = 14;
+   double bb_up = ind.iPR(y,x,period,1,4);//get upper
+   double bb_low = ind.iPR(y,x,period,1,3);//get lower
+   double bb_mid1 = ind.iPR(y,x,period,1,1);
+   double bb_mid = ind.iPR(y,x,period,0,1);
+   double pr= ind.iPR(y,x,period,0,0);// get pr
+   double pr1= ind.iPR(y,x,period,1,0);// get pr
    //Print("bb_up[",bb_up,"] bb_low[",bb_low,"], bb_mid[",bb_mid,"], pr[",pr,"] ");
    //if(pr>bb_up) return DIRECTIONAL_BUY;//if pr>upper return Directional Buy
-   if(pr>bb_mid) return DIRECTIONAL_BUY;
+   if((pr1<bb_mid1 && pr>bb_mid) && pr<bb_up) return DIRECTIONAL_BUY;
    //else if(pr<bb_low) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
-   else if(pr<bb_mid) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
+   else if((pr1>bb_mid1 && pr<bb_mid) && pr>bb_low) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
+   
    else return FAIL_ERR;
 }
 int EntrySignal:: PR_Reversal(string y, string x)
 {
-   double bb_up = ind.iPR(y,x,1,4);//get upper
-   double bb_low = ind.iPR(y,x,1,3);//get lower
-   double bb_mid = ind.iPR(y,x,0,1);
-   double pr= ind.iPR(y,x,1,0);// get pr
+   int period =14;
+   double bb_up = ind.iPR(y,x,period,1,4);//get upper
+   double bb_low = ind.iPR(y,x,period,1,3);//get lower
+   double bb_mid = ind.iPR(y,x,period,0,1);
+   double pr= ind.iPR(y,x,period,1,0);// get pr
    //Print("bb_up[",bb_up,"] bb_low[",bb_low,"], bb_mid[",bb_mid,"], pr[",pr,"] ");
    if(pr>bb_up) return REVERSAL_SELL;//if pr>upper return Directional Buy
    //if(pr>bb_mid) return DIRECTIONAL_BUY;

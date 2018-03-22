@@ -27,7 +27,7 @@ class Indicators
             double          iBB(int index, int mode);
             double          iLR(int index, int mode);
             double          iLR2(int index,int mode);
-            double          iPR(string y, string x,int index, int mode);
+            double          iPR(string y, string x,int period,int index, int mode);
             double          iPR2(int index, int mode);
             Indicators();
             ~Indicators();
@@ -160,7 +160,7 @@ double Indicators::iLR2(int index,int mode)
    return ilr;
    
 }
-double Indicators :: iPR(string y,string x, int index, int mode)
+double Indicators :: iPR(string y,string x,int period, int index, int mode)
 {
    string Y              = "EURUSD";
    string X              = "GBPUSD";
@@ -175,5 +175,5 @@ double Indicators :: iPR(string y,string x, int index, int mode)
    double bb_down= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,3,1);
    double bb_mid= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,1,1);
    double pr= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,0,1);*/
-   return iCustom(NULL,0,path,y,x,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,mode,index);
+   return iCustom(y,0,path,y,x,SignalMethod,SignalSMA,SignalSMA2,period,BandsDeviation,mode,index);
 }
