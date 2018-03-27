@@ -250,7 +250,7 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
    double mid   = i.iPR(y,x,period,0,1);
    double bb_up = i.iPR(y,x,period,0,4);
    double bb_bot = i.iPR(y,x,period,0,3);
-   atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
+   atr= i.iPRAtr(y,x,period,1);
    double pr = i.iPR(y,x,period,0,0);
 
    //--------------------------------------------
@@ -259,11 +259,12 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
       switch(tp_type)
         {
           case 0:
-             tp = pr+(value*point)                             ;
+             tp = pr+ value*point                             ;
              Print("Case 0 fix: Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = pr+(atr*value)                               ;
+             tp = (atr * point)*value                             ;
+             tp = pr + tp                                       ;
              Print("Case 1 volatility: Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -285,11 +286,12 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
       switch(tp_type)
         {
           case 0:
-             tp = pr -(value*point)                            ;
+             tp = pr - value*point                            ;
              Print("Case 0: fix Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = pr -(atr*value)                              ;
+             tp = (atr * point)*value                           ;
+             tp = tp-pr                                        ;
              Print("Case 1: volatility Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -310,17 +312,17 @@ double MoneyManagement:: CalculatePairTP(string y,string x,int period, int op,  
 double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  int sl_type, double value)
 {
    double sl    = 0.0                                           ;
-   double atr   = i.iAtr(0)                                     ;
+   double atr   = 0.0                                     ;
    double point = MarketInfo(y,MODE_POINT)               ;
    //int    digit = (int)MarketInfo(Symbol(),MODE_DIGITS)         ;
    double minsl = MarketInfo(y,MODE_STOPLEVEL)           ;
-   minsl        = NormalizeDouble(minsl*point,Digits)           ;
    int    digit = (int)MarketInfo(y,MODE_DIGITS)          ;
+   minsl        = NormalizeDouble(minsl*point,digit)           ;   
    //double mid   = i.iBB(0,MODE_MAIN)                             ;//iBands(NULL,0,BB_Period,2,0,PRICE_CLOSE,MODE_MAIN,1);
    double mid   = i.iPR(y,x,period,0,1);
    double bb_up = i.iPR(y,x,period,0,4);
    double bb_bot = i.iPR(y,x,period,0,3);
-   atr= NormalizeDouble(i.iPRAtr(y,x,period,1),digit);
+   atr= i.iPRAtr(y,x,period,1);
    double pr = i.iPR(y,x,period,0,0);
    RefreshRates()                                               ;
    //--------------------------------------------
@@ -329,11 +331,13 @@ double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  
        switch(sl_type)
          {
             case 0:
-               sl = pr -(value*point)                          ;
+               sl = value*point                          ;
+               sl = pr -sl                                      ;   
                Print("Case Fix:Stop Loss [",sl,"]")             ;
                break                                            ;
             case 1:
-               sl = pr -(atr*value)                            ;
+               sl = (atr * point)*value                      ;
+               sl = sl - pr                                      ;
                Print("Case Volatility:Stop Loss [",sl,"]")      ;
                break                                            ;
             case 2:
@@ -354,11 +358,13 @@ double MoneyManagement:: CalculatePairSL(string y,string x,int period, int op,  
       switch(sl_type)
            {
              case 0:
-                  sl = pr+(value*point)                        ;
+                  sl = value*point                        ;
+                  sl = pr +sl                                  ;
                   Print("Case Fix:Stop Loss [",sl,"]")          ;
                   break                                         ;
              case 1:
-                  sl=pr+(atr*value)                            ;
+                  sl = (atr * point)*value                                ;
+                  sl=pr+sl                                      ;
                   Print("Case Volatility:Stop Loss [",sl,"]")   ;
                   break                                         ;
              case 2:
@@ -685,7 +691,8 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
     {
       if(OrderSelect(ii,SELECT_BY_POS)==true)
        {
-         if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
+         if(OrderMagicNumber()==Magic_Numb )
+         //if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
           {
                total+=OrderProfit();
                if(total>= profitTarget)break;
