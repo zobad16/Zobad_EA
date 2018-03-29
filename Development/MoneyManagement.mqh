@@ -53,7 +53,7 @@ class MoneyManagement
             bool   isOrderOpen()                                                        ;
             bool   JumpToBreakeven(int magic,string comment,double when, double by)     ;
             bool   ModifyCheck(bool res)                                                ;
-            bool   EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb);
+            bool   EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb,int & count );
             bool   Ticket_Check(int ticket)                                             ;
             bool   isConsequtive(int code , int magic)                                  ;
             int isOrdersTotal(int mg)                                                   ;
@@ -683,7 +683,7 @@ bool MoneyManagement::Ticket_Check(int ticket)
    return false                                                                ;
   }
  
-bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb)
+bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, bool useStop,double stopLevel, int Magic_Numb, int & count)
  {
    double total=0.0;
    if(OrdersTotal()<1)return false;
@@ -703,11 +703,13 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
     if(total>=profitTarget && useProfit == true)
       {
          Print(total);
+         count = 1;
          Print("Closing All Orders. Reached Profit");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
     if(total<=stopLevel && useStop==true)
       {
          Print(total);
+         count = -1;
          Print("Closing All Orders. Reached Stop Level");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
          //Print("Total[",total,"]");
@@ -719,7 +721,7 @@ bool MoneyManagement:: CloseAllOrders(int Magic_Numbe)
    int total= OrdersTotal();
    for(int ii=total-1;ii>=0;ii--){
      if(OrderSelect(ii,SELECT_BY_POS)==true){
-        if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numbe){
+        if(OrderMagicNumber()==Magic_Numbe){
             if(OrderType()==OP_BUY){
                  if(!OrderClose(OrderTicket(),OrderLots(),MarketInfo(OrderSymbol(),MODE_BID),Slippage,clrAntiqueWhite))
                     Print("Order Send Failed with Error[",GetLastError(),"]");

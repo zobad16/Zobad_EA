@@ -32,7 +32,11 @@ enum Strat_typeII
                _DIRECTIONAL_Range = 7,  //Directional Volatility
                _REVERSAL_Range    = 8,  //Reversal Volatility       
             };
-
+enum PairOrderDirection
+{
+   _SAME     = 1,
+   _OPPOSITE = -1,
+};
 enum LotType
 {
    MANUAL = 0,
@@ -82,6 +86,7 @@ extern bool             useStrategy1       = true      ;             //Strategy:
 bool                    useHedge           = false     ;             //Strategy:: Use Hegde 
 extern string           pairY              = "US30"    ;             //Pair1
 extern string           pairX              = "US500"   ;             //Pair2
+extern PairOrderDirection           pOrderDirection    = _OPPOSITE;  //Pair Order Direction
  string          reversalSet="-------Reversal Strategy -------" ;             //Reversal TP and SL Settings
 bool             visible            = false      ;
 extern Take_Profit_Type TP_Type            = MID_BB;             //TP:: Type
@@ -90,9 +95,11 @@ extern double           TP_Value           =  3.0      ;             //TP:: Vola
 extern double           SL_Value           =  3.0      ;             //SL:: Volatility/Fixed(Points)
 extern double           _range             = 2.5       ;             
 extern int              leg                = 6         ;
-extern double           multiply           = 2.5       ;
+extern double           multiply           = 2.5       ;             //Multiply Lot
+extern double           multiplyEqtyTp     = 2         ;             //Multiply Equity TP
 extern bool             EQ_Based           = true      ;             //Use Equity Based TP
 extern bool             useGridStop        = false     ;             //Us Equity Based SL
+extern double           _startProfitTarget = 1000;
 extern double           _profitTarget      = 1000      ;             //Profit Target
 extern double           _stopLevel         = -500.0    ;             //Stop Out Level
 int              _timegap1          = 31        ;             //Order 1 time gap(in mins)
@@ -104,6 +111,7 @@ int                    _cur_total         = 0         ;
 bool                   startFlag          = false     ;
 datetime expiry = D'2018.06.06 00:00';
 bool bExpiryAlertDelieverd = false;
+int pCount =0;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -147,43 +155,66 @@ void OnTick()
          Print("Closed. _Cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
          startFlag = false;
         }
-        
-        mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
-        //Print("Count[",_count,"]");
-        if(isOrdersTotal(Magic_Number)<1 ){         
-         if( IsNewBar()/* && (_count ==0 || _count==leg)*/){
-            int ccode = IsSignal(_strat_type,_range);
-           /* if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
-               if(ccode == DIRECTIONAL_BUY) mm.PlaceOrderPairs(pairY,pairX,OP_BUY,OP_SELL,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
-               else if(ccode == DIRECTIONAL_SELL) mm.PlaceOrderPairs(pairY,pairX,OP_SELL,OP_BUY,LotSize,LotSize,Magic_Number,"Pair Directional",TP_Type,TP_Value,SL_Type,SL_Value );
-               if(isOrdersTotal(Magic_Number)==2)_count = 1;
-               Print("New Order");*/
-            if(_strat_type == _PAIR_DIRECTIONAL && ccode != FAIL){
-               if(ccode == DIRECTIONAL_BUY)
-                  PlaceOrderPair( OP_BUY,OP_SELL,"Pair Directional");
-               else if(ccode == DIRECTIONAL_SELL) 
-                  PlaceOrderPair(OP_SELL,OP_BUY,"Pair Directional");
-               if(isOrdersTotal(Magic_Number)==2)_count = 1;
-               Print("New Order");   
-            }
-            else if(_strat_type == _PAIR_REVERSAL && ccode != FAIL){
-               if(ccode == REVERSAL_BUY)
-                  PlaceOrderPair( OP_BUY,OP_SELL,"Pair Reversal");
-               else if(ccode == REVERSAL_SELL) 
-                  PlaceOrderPair(OP_SELL,OP_BUY,"Pair Reversal");
-               if(isOrdersTotal(Magic_Number)==2)_count = 1;
-               Print("New Order");   
-            }
-            //if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
-            //else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
-         }   
-      }
-      /*if(isOrdersTotal(Magic_Number)>0 || _count >1 )*/else{CloseOrderPair(pairY,pairX);CutAndReverse(pairY,pairX);CutAndReverse(pairY,pairX);/*Print("Count[",_count,"]");Print("isOrdersTotal[",isOrdersTotal(Magic_Number),"]");*/}
+        if(isOrdersTotal(Magic_Number)<1 )
+        {         
+         if( IsNewBar())
+         {
+            if(isOrdersTotal(Magic_Number)<1 )
+            {
+               int ccode = IsSignal(_strat_type,_range);
+               if(ccode == DIRECTIONAL_BUY )
+               {
+                  if(pOrderDirection == _SAME)//Buy buy
+                  {
+                     PlaceOrderPair( OP_BUY,OP_BUY,"Pair Directional-Same");
+                  }
+                  else //buy sell
+                  {
+                     PlaceOrderPair( OP_BUY,OP_SELL,"Pair Directional-Opp");
+                  }
+               }
+               else if(ccode == DIRECTIONAL_SELL)
+               {
+                  if( pOrderDirection == _SAME) //sell sell
+                  {
+                     PlaceOrderPair( OP_SELL,OP_SELL,"Pair Directional-Same");
+                  }
+                  else //sell buy
+                  {
+                     PlaceOrderPair( OP_SELL,OP_BUY,"Pair Directional-Opp");
+                  }
+               
+               }
+            }           
+            
+         }
+         
+        }
+       else
+       { 
+         mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number, pCount);
+         CutAndReverse(pairY,pairX);
+       }
+        //new bar
+        //If no open orders
+        //Check and store entry signal
+        //if entry signal buy : Check the pair order direction(method)
+        // if same both pair buy
+        // else buy 1st pair sell 2nd
+        // else if sell:
+        // if entry signal sell : check pair order direction
+        // if same both sell
+        // else sell1 buy 2
+        //-----------------
+        //Check for equity close
+        //If equity Close set pCount to +1/-1 based on either profit or loss
+        // Cut and reverse based on legs and pCount
       
      }
-     Comment("_Count[",(string)_count,"] total Orders[",isOrdersTotal(Magic_Number),"],TP[",_tp,"], SL[",_sl,"]"); 
+     Comment("Profit Target[",_profitTarget,"]\npCount[",pCount,"] _Count[",(string)_count,"] total Orders[",isOrdersTotal(Magic_Number),"],TP[",_tp,"], SL[",_sl,"]"); 
   }
 //+------------------------------------------------------------------+
+
 void CloseOrder(){
    int ticket=0,op = 0;
    double lot=0.0,openprice=0.0;
@@ -431,23 +462,35 @@ int CutAndReverse(string y, string x){
          LastOrderOperation(y,op_y, lot_y,profitY);
          LastOrderOperation(x,op_x, lot_x, profitX);
          Print("lot_y[",lot_y,"] lot_x[",lot_x,"]");
-         
-         if(profitY+profitX<0)
+         if(pCount<0)
+        // if(profitY+profitX<0)
          {
            if(mm.PlaceOrderPairsHidden(y,x,op_x,op_y,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c"))
            {/*if(isOrdersTotal(Magic_Number)>1)*/ 
                _tp = NormalizeDouble( mm.CalculatePairTP(y,x,14,op_y,TP_Type,TP_Value),MarketInfo(y,MODE_DIGITS));
                _sl = NormalizeDouble( mm.CalculatePairSL(y,x,14,op_y,SL_Type,SL_Value),MarketInfo(y,MODE_DIGITS));
-               _count++;               
-            }else  Print("Error: Unable to Reverse");
+               _profitTarget = _profitTarget * multiplyEqtyTp;
+               _count++;          
+               pCount = 0;     
+            }else  {Print("Error: Unable to Reverse");_count =0;}
          
-         }else
+         }else if(pCount>0)
          {
             //Profit. Reset Counter
             _tp = 0.0;
             _sl =0.0;
             _count = 0;
+            pCount =0;
+            _profitTarget = _startProfitTarget;
          } 
+         if(pCount<0 && _count == leg)
+         {
+            _tp = 0.0;
+            _sl =0.0;
+            _count = 0;
+            pCount =0;
+            _profitTarget = _startProfitTarget;
+         }
       }
        else  return FAIL;
     } 
