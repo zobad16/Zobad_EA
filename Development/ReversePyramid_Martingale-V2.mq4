@@ -147,8 +147,8 @@ void OnTick()
          Print("Closed. _Cur_total[",_cur_total,"], isTotal[",isOrdersTotal(Magic_Number),"]");
          startFlag = false;
         }
-        
-        mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number);
+        int c = 0;
+        mm.EquityBasedClose(EQ_Based,_profitTarget,useGridStop,_stopLevel,Magic_Number,c);
         //Print("Count[",_count,"]");
         if(isOrdersTotal(Magic_Number)<1 ){         
          if( IsNewBar()/* && (_count ==0 || _count==leg)*/){
@@ -242,7 +242,7 @@ int StopHit(int op, double tp, double sl)
    return(0);
 }
 int StopHitPair(int op)
-{
+{//need to check this area
    int period = 14;
    //0=fail, 1=tp,-1=sl
    if(!visible){
@@ -250,15 +250,15 @@ int StopHitPair(int op)
          double pr_atr = ind.iPR(pairY,pairX,period,0,0);
          if(op == OP_BUY)
          {
-             if(pr_atr >= _tp){ Print("TP");return 1;}
+             if(pr_atr >= _tp){ Print("TP atPR[",pr_atr,"]");return 1;}
          //else if PRATR<= _sl return -1
-            else if(pr_atr <= _sl){Print("SL"); return -1;}
+            else if(pr_atr <= _sl){Print("SL atPR[",pr_atr,"]"); return -1;}
          }   
          else if(op == OP_SELL)
          {
-             if(pr_atr <= _tp){ Print("TP"); return 1;}
+             if(pr_atr <= _tp){ Print("TP atPR[",pr_atr,"]"); return 1;}
          //else if PRATR<= _sl return -1
-            else if(pr_atr >= _sl){Print("SL"); return -1;}
+            else if(pr_atr >= _sl){Print("SL atPR[",pr_atr,"]"); return -1;}
          }      
          //else return 0
          else return 0;     
@@ -436,8 +436,8 @@ int CutAndReverse(string y, string x){
          {
            if(mm.PlaceOrderPairsHidden(y,x,op_x,op_y,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c"))
            {/*if(isOrdersTotal(Magic_Number)>1)*/ 
-               _tp = NormalizeDouble( mm.CalculatePairTP(y,x,14,op_x,TP_Type,TP_Value),MarketInfo(y,MODE_DIGITS));
-               _sl = NormalizeDouble( mm.CalculatePairSL(y,x,14,op_x,SL_Type,SL_Value),MarketInfo(y,MODE_DIGITS));
+               _tp = NormalizeDouble( mm.CalculatePairTP(y,x,14,op_y,TP_Type,TP_Value),MarketInfo(y,MODE_DIGITS));
+               _sl = NormalizeDouble( mm.CalculatePairSL(y,x,14,op_y,SL_Type,SL_Value),MarketInfo(y,MODE_DIGITS));
                _count++;               
             }else  Print("Error: Unable to Reverse");
          

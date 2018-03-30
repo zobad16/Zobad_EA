@@ -183,10 +183,8 @@ void OnTick()
                   {
                      PlaceOrderPair( OP_SELL,OP_BUY,"Pair Directional-Opp");
                   }
-               
                }
-            }           
-            
+            } 
          }
          
         }
@@ -348,6 +346,7 @@ bool PlaceOrderPair(int op_y, int op_x,string comment)
          _tp = mm.CalculatePairSL(pairY,pairX,ATR_period,op_y,SL_Type,SL_Value);
       }
       _count++;   
+      Print("-----------------\nLeg count[",_count,"]\n---------------------");
    }   
    
    return false;
@@ -458,23 +457,25 @@ int CutAndReverse(string y, string x){
   // Print("Value[",value,"]");  
    if(value==0){
       Print("Cut and reverse value = 0");      
-      if(_count<leg){
+      if(_count<leg)
+      {
          LastOrderOperation(y,op_y, lot_y,profitY);
          LastOrderOperation(x,op_x, lot_x, profitX);
          Print("lot_y[",lot_y,"] lot_x[",lot_x,"]");
          if(pCount<0)
-        // if(profitY+profitX<0)
          {
            if(mm.PlaceOrderPairsHidden(y,x,op_x,op_y,lot_y*multiply,lot_x*multiply,Magic_Number,"Pair Trading-c"))
-           {/*if(isOrdersTotal(Magic_Number)>1)*/ 
+           {
                _tp = NormalizeDouble( mm.CalculatePairTP(y,x,14,op_y,TP_Type,TP_Value),MarketInfo(y,MODE_DIGITS));
                _sl = NormalizeDouble( mm.CalculatePairSL(y,x,14,op_y,SL_Type,SL_Value),MarketInfo(y,MODE_DIGITS));
                _profitTarget = _profitTarget * multiplyEqtyTp;
                _count++;          
-               pCount = 0;     
-            }else  {Print("Error: Unable to Reverse");_count =0;}
-         
-         }else if(pCount>0)
+               pCount = 0;
+               Print("------\nCount[",_count,"] pCount[",pCount,"]\n------");     
+            }
+            else  {Print("-----------\nError: Unable to Reverse. \nLegNo[",_count,"] Total Allowed leg[",leg,"]\n------------");}         
+         }
+         else if(pCount>0)
          {
             //Profit. Reset Counter
             _tp = 0.0;
@@ -483,6 +484,14 @@ int CutAndReverse(string y, string x){
             pCount =0;
             _profitTarget = _startProfitTarget;
          } 
+         else if (pCount == 0)
+         {
+            LastOrderOperation(y,op_y, lot_y,profitY);
+            LastOrderOperation(x,op_x, lot_x, profitX);
+            if(profitY + profitX > 0){pCount =0; _count = 0;}
+            else {pCount = -1; return 1;}
+            
+         }
          if(pCount<0 && _count == leg)
          {
             _tp = 0.0;
@@ -492,13 +501,33 @@ int CutAndReverse(string y, string x){
             _profitTarget = _startProfitTarget;
          }
       }
-       else  return FAIL;
+      else
+      {
+         Print("-----------\nError: Unable to Reverse. \nLegNo[",_count,"] Total Allowed leg[",leg,"]\n------------");
+        _tp = 0.0;
+        _sl =0.0;
+        _count = 0;
+        pCount =0;
+        _profitTarget = _startProfitTarget;
+        return FAIL;
+      }
     } 
     else if(value == 1){
       //Close Order
-     if( mm.CloseOrder(Magic_Number,x)) return 1;
-     else if( mm.CloseOrder(Magic_Number,y)) return 1;
-     else return -1;
+     if( mm.CloseOrder(Magic_Number,x)) 
+     {
+       Print("-----------\nManually Closing: LegNo[",_count,"] Total Allowed leg[",leg,"]\n------------");
+        _tp = 0.0;
+        _sl =0.0;
+        //pCount =0;
+       // _profitTarget = _startProfitTarget;
+      return 1;
+     }
+     if( mm.CloseOrder(Magic_Number,y)) 
+     {
+      return 1;
+     }
+     return -1;
     }               
    return(0);
 }

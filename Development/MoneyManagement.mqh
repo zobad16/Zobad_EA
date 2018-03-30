@@ -703,14 +703,14 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
     if(total>=profitTarget && useProfit == true)
       {
          Print(total);
-         count = 1;
+         count = 1;//this is pCount +1 = profit, -1 =loss
          Print("Closing All Orders. Reached Profit");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
     if(total<=stopLevel && useStop==true)
       {
          Print(total);
          count = -1;
-         Print("Closing All Orders. Reached Stop Level");if(CloseAllOrders(Magic_Numb)==true)return true;
+         Print("----------\nClosing All Orders. Reached Stop Level. pCount[",count,"]\n----------------");if(CloseAllOrders(Magic_Numb)==true)return true;
       }
          //Print("Total[",total,"]");
    return false;
