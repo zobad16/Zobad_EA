@@ -145,8 +145,18 @@ void OnTick()
         if(isOrdersTotal(Magic_Number)<1 ){         
          if( IsNewBar()){
             int ccode = IsSignal(_strat_type,_range);
-            if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)PlaceOrder(_strat_type,OP_BUY); 
-            else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)PlaceOrder(_strat_type,OP_SELL);           
+            if(ccode== DIRECTIONAL_BUY || ccode == REVERSAL_BUY)
+            {
+               PlaceOrder(_strat_type,OP_BUY); 
+               _count = 1;
+               Print("-----------\nNew Order Placed: Leg[",_count,"]\n--------");  
+            }   
+            else if(ccode== DIRECTIONAL_SELL || ccode == REVERSAL_SELL)
+            {
+               PlaceOrder(_strat_type,OP_SELL);           
+               _count = 1;
+               Print("-----------\nNew Order Placed: Leg[",_count,"]\n--------");  
+            }   
          }   
       }
       else{/*int errCode=StopHit(OP_BUY,_tp,_sl);*/CloseOrder();CutAndReverse();}
