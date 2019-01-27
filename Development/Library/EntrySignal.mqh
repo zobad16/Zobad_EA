@@ -31,6 +31,7 @@ class EntrySignal
             int  Revised_Directional();
             int  Test_Directional()   ;
             int  Test_Reversal()      ;
+            int  LastOrder(int magic);
             
             enum Operations
             {
@@ -67,6 +68,8 @@ class EntrySignal
                ST_DEV_C2   = 2,  //Standard Deviation 2
                ST_DEV_C3   = 3,  //Standard Deviation 3
                BREAKIN     = 6,  //Break in
+               ADR_REVERSAL = 7,//ADR_Reversal
+               ADR_DIRECTIONAL =8,//ADR Directional
                       
             };
    public:       
@@ -80,21 +83,32 @@ class EntrySignal
             int  isSignalCandleTest(int type,int &_ccode);                        
             int  OrderOperationCode(int magic);
             bool OrderOperationCode(int magic, int op);
-            int  Pattern_Point(double points);
+            int  Pattern_Point(double points, int magic);
             int  Pattern_Point_Negative(double points);
             int  Pattern_Point_Negative(double points, int magic);
             int  Pattern_Point_Negatives(double points, int magic);
             int  Pattern_Breakin();
             int  PR_Directional(string y, string x);
             int  PR_Reversal(string y, string x);
+            int  ADR_Reversal();
+            int  ADR_Directional();
+            int  ADR_Reversal(double entryPoint);
+            int  ADR_Directional(double entryPoint);
             int  Reversal(int op);
+            int MidCrossoverDirectional();
+            int MidCrossoverReversal();
+            EntrySignal(int pBB=14,int pATR=14, int pLR = 14);
 };
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-EntrySignal::EntrySignal()
+EntrySignal::EntrySignal(int pBB=14,int pATR=14, int pLR = 14)
   {
-    ind = new Indicators();
+    ind = new Indicators(pBB,pATR,pLR);
+  }
+  EntrySignal::EntrySignal( )
+  {
+    ind = new Indicators(14,14,14,34,0.618,1.618,2.618);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -127,31 +141,53 @@ bool EntrySignal::isExist(int magic, string comment, int &count, int &op_code, d
    if (count>0) return true;
    return false;
 }
-int  EntrySignal::Pattern_Point(double points)
+int EntrySignal:: LastOrder(int magic)
 {
-  int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
+   int ticketno = 0;
+   datetime a=D'1980.07.19 12:30:27';
+   for(int i = 0 ; i< OrdersTotal(); i++)
+   {
+      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)>0)
+        {
+            if(OrderMagicNumber() == magic && OrderSymbol()== Symbol() )
+            {
+               if(OrderOpenTime()>a ){
+               a = OrderOpenTime();
+               ticketno = OrderTicket();}
+            }  
+        }
+  }
+  return ticketno;
+}
+int  EntrySignal::Pattern_Point(double points, int magic)
+{
+ int digit =(int) MarketInfo(Symbol(), MODE_DIGITS);
   int total =OrdersTotal();
-  if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0)
-  {
-   double openPrice=OrderOpenPrice();
-   int    op_type= OrderType();
-   if(op_type == OP_BUY)
-   {
-      //if(openPrice - Bid >= points)
-      if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit))
-      {
-         return DIRECTIONAL_BUY;
+  // for(int i = total -1; i>=0 ; i--)
+  // {
+      if(OrderSelect(total-1,SELECT_BY_POS,MODE_TRADES)>0)
+        {
+         if(OrderSymbol()==Symbol() && OrderMagicNumber()==magic){
+            double openPrice=OrderOpenPrice();
+            int    op_type= OrderType();
+            if(op_type == OP_BUY)
+               {      //if(openPrice - Bid >= points)
+                  if(Bid -openPrice  >= NormalizeDouble(points*_Point,digit))
+                  {
+                     return DIRECTIONAL_BUY;
+                  }
+               }
+            if(op_type == OP_SELL)
+               {
+                  if(openPrice-Bid >=NormalizeDouble(points*_Point,digit))
+                  //if(Ask-openPrice >=points)
+                  {
+                     return DIRECTIONAL_SELL;
+                  }   
+               }  
+        }  
       }
-   }
-   if(op_type == OP_SELL)
-   {
-      if(openPrice-Ask >=NormalizeDouble(points*_Point,digit))
-      //if(Ask-openPrice >=points)
-      {
-         return DIRECTIONAL_SELL;
-      }   
-   }  
-  }     
+  // }   
   return FAIL;
 }
 
@@ -616,6 +652,17 @@ int EntrySignal :: isSignalCandle(int type, int& _ccode)
          _ccode = (int)rest                            ;
          //res = (int)rest;
          break                                         ;
+       case ADR_REVERSAL :
+          Print("Case ADR Reversal")                    ;
+          res = ADR_Reversal()                         ;
+          rest =""+(string)ADR_REVERSAL+""+(string)res ;
+          _ccode = (int) rest                          ;
+          break                                        ;
+       case ADR_DIRECTIONAL :
+          res = 0;//ADR_Directional()                         ;
+          rest =""+(string)ADR_REVERSAL+""+(string)res ;
+          _ccode = (int) rest                          ;
+          break                                        ;
          
    }
    //res= (int)ST_DEV_C2+""+res;
@@ -694,6 +741,17 @@ int EntrySignal :: isSignalCandleRev(int type, int& _ccode)
             Print("Res[",res," _Ccode[",_ccode,"]")  ;
          }
          break                                         ;
+       case ADR_REVERSAL :
+          Print("Case ADR Reversal")                    ;
+          res = ADR_Reversal()                         ;
+          rest =""+(string)ADR_REVERSAL+""+(string)res ;
+          _ccode = (int) rest                          ;
+          break                                        ;
+       case ADR_DIRECTIONAL :
+          res = 0;//ADR_Directional()                         ;
+          rest =""+(string)ADR_REVERSAL+""+(string)res ;
+          _ccode = (int) rest                          ;
+          break                                        ;
          
    }
   // Comment(res);
@@ -779,7 +837,7 @@ int  EntrySignal::OrderOperationCode(int magic){
 bool EntrySignal::OrderOperationCode(int magic, int op){
     int total = OrdersTotal()                          ;
     int opCode = FAIL                                  ;
-    if(total<1)return FAIL                             ;
+    if(total<1)return false                             ;
     for(int i=0; i<total;i++)
     {
       if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true)
@@ -846,3 +904,97 @@ int EntrySignal:: PR_Reversal(string y, string x)
    //else if(pr<bb_mid) return DIRECTIONAL_SELL;//else if pr<lower return Directional  Sell
    else return FAIL_ERR;
 }   
+int EntrySignal :: MidCrossoverDirectional()
+{  
+   double mid1 = ind.iBB(1,MODE_MAIN);
+   double mid2 = ind.iBB(2,MODE_MAIN);
+   double mid3 = ind.iBB(3,MODE_MAIN);
+   if(Close[3]< mid3 && Close[2]> mid2 && Close[1]>Close[2]) return DIRECTIONAL_BUY;
+   else if(Close[3]> mid3 && Close[2]< mid2 && Close[1]<Close[2]) return DIRECTIONAL_SELL;
+   
+   /*if(Close[2]< mid2 && Close[1]> mid1 ) return DIRECTIONAL_BUY;
+   else if(Close[2]> mid3 && Close[1]< mid1 ) return DIRECTIONAL_SELL;
+   */return FAIL_ERR;
+}   
+int EntrySignal :: MidCrossoverReversal()
+{  
+   double mid1 = ind.iBB(1,MODE_MAIN);
+   double mid2 = ind.iBB(2,MODE_MAIN);
+   double mid3 = ind.iBB(3,MODE_MAIN);
+   if(Close[3]< mid3 && Close[2]> mid2 && Close[1]>Close[2]) return REVERSAL_SELL;
+   else if(Close[3]> mid3 && Close[2]< mid2 && Close[1]<Close[2]) return REVERSAL_BUY;
+   return FAIL_ERR;
+}
+int EntrySignal :: ADR_Reversal()
+{
+   double adr_high      = ind.iADR(15,"");
+   double adr_low       = ind.iADR(-15,"");
+   Comment("high[",adr_high,"]low[",adr_low,"]");
+   if(adr_high == 0 || adr_low == 0) return 0;
+     if(Close[0]>adr_high)
+         {
+            Print("Sell Reversal.");
+            return -1;
+         }
+   else if(Close[0]< adr_low)
+         {
+            Print("Buy Reversal.");
+            return 1;
+         }
+   return 0;
+}
+int EntrySignal :: ADR_Directional()
+{
+   double adr_high      = ind.iADR(15,"");
+   double adr_low       = ind.iADR(-15,"");
+   Comment("high[",adr_high,"]low[",adr_low,"]");
+   if(adr_high == 0 || adr_low == 0) return 0;
+     if(Close[0]>adr_high)
+         {
+            Print("Buy Directional.");
+            return DIRECTIONAL_BUY;
+         }
+   else if(Close[0]< adr_low)
+         {
+            Print("Sell Directional.");
+            return DIRECTIONAL_SELL;
+         }
+   return 0;
+}
+int EntrySignal :: ADR_Reversal(double ep)
+{
+   double adr_high      = ind.iADR(15,"");
+   double adr_low       = ind.iADR(-15,"");
+   Comment("high[",adr_high,"]low[",adr_low,"]");   
+   Print("--------\n[",Symbol(),"]high[",adr_high,"]low[",adr_low,"].Trigger Point high[",adr_high+ep*Point,"]\nTrigger Point Low[",adr_low - ep*Point,"]\n---------");
+   if(adr_high == 0 || adr_low == 0) return 0;
+     if(Close[0]>(adr_high + ep*Point))
+         {
+            Print("Sell Reversal.");
+            return REVERSAL_SELL;
+         }
+   else if(Close[0]< (adr_low - ep*Point))
+         {
+            Print("Buy Reversal.");
+            return REVERSAL_BUY;
+         }
+   return 0;
+}
+int EntrySignal :: ADR_Directional(double ep)
+{
+   double adr_high      = ind.iADR(15,"");
+   double adr_low       = ind.iADR(-15,"");
+   Comment("high[",adr_high,"]low[",adr_low,"]");
+   if(adr_high == 0 || adr_low == 0) return 0;
+     if(Close[0]>(adr_high+ ep*Point))
+         {
+            Print("Buy Directional.");
+            return DIRECTIONAL_BUY;
+         }
+   else if(Close[0]< (adr_low - ep*Point))
+         {
+            Print("Sell Directional.");
+            return DIRECTIONAL_SELL;
+         }
+   return 0;
+}

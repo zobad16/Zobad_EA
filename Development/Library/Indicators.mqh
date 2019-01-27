@@ -29,7 +29,12 @@ class Indicators
             double          iLR2(int index,int mode);
             double          iPR(string y, string x,int period,int index, int mode);
             double          iPR2(int index, int mode);
+            void            setPeriodBB(int _period){_period_BB = _period;}
+            void            setPeriodATR(int _period){_period_atr = _period;}
+            double          iADR(int mode, string symbol = "");
             Indicators();
+            Indicators(int pBB =14,int pAtr=14,int pLR=14, int lengthLR =34, double stdc1 =0.618, double stdc2 = 1.618, double stdc3 = 2.618);
+
             ~Indicators();
 };
 //+------------------------------------------------------------------+
@@ -44,6 +49,16 @@ Indicators::Indicators()
    _std_Channel_1 = 0.618;
    _std_Channel_2 = 1.618;
    _std_Channel_3 = 2.618;   
+}
+Indicators::Indicators(int pBB ,int pAtr=14,int pLR=14, int lengthLR =34, double stdc1 =0.618, double stdc2 = 1.618, double stdc3 = 2.618)
+{
+   _period_BB  = pBB;
+   _period_atr = pAtr;
+   _LR_period  = pLR;
+   _LR_length  = lengthLR;
+   _std_Channel_1 = stdc1;
+   _std_Channel_2 = stdc2;
+   _std_Channel_3 = stdc3;   
 }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -176,4 +191,75 @@ double Indicators :: iPR(string y,string x,int period, int index, int mode)
    double bb_mid= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,1,1);
    double pr= iCustom(NULL,0,path,Y,X,SignalMethod,SignalSMA,SignalSMA2,BandsPeriod,BandsDeviation,0,1);*/
    return iCustom(y,0,path,y,x,SignalMethod,SignalSMA,SignalSMA2,period,BandsDeviation,mode,index);
+}
+double Indicators :: iADR(int mode, string symbol="")
+{
+   double ilr=0.0;
+   int index =0;
+   string adr_high, adr_low,wkly_mid_low, wkly_mid_high, wkly_high, wkly_low, wkly_high1,wkly_low1,wkly_high2,wkly_low2,wkly_high3,wkly_low3;switch (mode)
+   {
+      case 15:  
+         adr_high = "TextPlace_ADRHighLine";       
+         ilr = NormalizeDouble(ObjectGetValueByShift(adr_high, index),Digits);
+         Print(" adr_high[",ilr,"]");
+         break;
+      case -15:
+         adr_low  = "TextPlace_ADRLowLine";
+         ilr =NormalizeDouble(ObjectGetValueByShift(adr_low, index),Digits);
+         Print("adr_low[",ilr,"]");
+         break;
+      case 1:
+         wkly_mid_high = "TextPlace_WklyMidHigh";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_mid_high, index),Digits);
+         Print("wkly_mid_high[",ilr,"]");
+         break;
+      case -1:
+         wkly_mid_low  = "TextPlace_WklyMidLow";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_mid_low, index),Digits);
+         Print("wkly_mid_low[",ilr,"]");
+         break;
+      case 2:
+         wkly_high     = "TextPlace_WklyHigh";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_high, index),Digits);
+         Print("wkly_high[",ilr,"]");
+         break;
+      case -2:
+         wkly_low      = "TextPlace_WklyLow";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_low, index),Digits);
+         Print("wkly_low[",ilr,"]");
+         break;
+      case 3:
+         wkly_high1    = "TextPlace_WklyExtHigh_1";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_high1, index),Digits);
+         Print("wkly_high1[",ilr,"]");
+         break;
+      case -3:
+         wkly_low1     = "TextPlace_WklyExtLow_1";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_low1, index),Digits);
+         Print("wkly_low1[",ilr,"]");
+         break;
+      case 4:
+         wkly_high2    = "TextPlace_WklyExtHigh_2";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_high2, index),Digits);
+         Print("wkly_high2[",ilr,"]");
+         break;
+      case -4:
+         wkly_low2     = "TextPlace_WklyExtLow_2";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_low2, index),Digits);
+         Print("wkly_low2[",ilr,"]");
+         break;
+      case 5:
+         wkly_high3    = "TextPlace_WklyExtHigh_3";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_high3, index),Digits);
+         Print("wkly_high3[",ilr,"]");
+         break;
+      case -5:
+         wkly_low3     = "TextPlace_WklyExtLow_3";
+         ilr = NormalizeDouble(ObjectGetValueByShift(wkly_low3, index),Digits);
+         Print("wkly_low3[",ilr,"]");
+         break;   
+           
+   }
+   return ilr;
+
 }

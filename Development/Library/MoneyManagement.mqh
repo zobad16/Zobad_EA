@@ -66,7 +66,7 @@ MoneyManagement::MoneyManagement()
    Slippage  = 33              ;
    _ticket   = 0               ;
    _prev_Atr = 0.0             ;
-   i         = new Indicators();
+   i         = new Indicators(14);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -147,11 +147,11 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
       switch(tp_type)
         {
           case 0:
-             tp = Ask+(value*point)                             ;
+             tp = Ask+ value*point                             ;
              Print("Case 0 fix: Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = Ask+(atr*value)                               ;
+             tp = Ask+ atr*value                               ;
              Print("Case 1 volatility: Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -169,11 +169,11 @@ double MoneyManagement:: CalculateTP(int op,   int    tp_type, double value)
       switch(tp_type)
         {
           case 0:
-             tp = Bid -(value*point)                            ;
+             tp = Bid - value*point                             ;
              Print("Case 0: fix Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = Bid -(atr*value)                              ;
+             tp = Bid - atr*value                               ;
              Print("Case 1: volatility Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -203,11 +203,11 @@ double MoneyManagement:: CalculateTP(string x, int op,   int    tp_type, double 
       switch(tp_type)
         {
           case 0:
-             tp = _Ask+(value*point)                             ;
+             tp = _Ask+ value*point                              ;
              Print("Case 0 fix: Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = _Ask+(atr*value)                               ;
+             tp = _Ask+ atr*value                                ;
              Print("Case 1 volatility: Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -225,11 +225,11 @@ double MoneyManagement:: CalculateTP(string x, int op,   int    tp_type, double 
       switch(tp_type)
         {
           case 0:
-             tp = _Bid -(value*point)                            ;
+             tp = _Bid - value*point                             ;
              Print("Case 0: fix Tp[",tp,"]")                    ;
              break                                              ;
           case 1:
-             tp = _Bid -(atr*value)                              ;
+             tp = _Bid - atr*value                               ;
              Print("Case 1: volatility Tp[",tp,"]")                    ;
              break                                              ;
           case 2:
@@ -397,11 +397,11 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
        switch(sl_type)
          {
             case 0:
-               sl = Bid -(value*point)                          ;
+               sl = Bid - value*point                           ;
                Print("Case Fix:Stop Loss [",sl,"]")             ;
                break                                            ;
             case 1:
-               sl = Bid -(atr*value)                            ;
+               sl = Bid - atr*value                             ;
                Print("Case Volatility:Stop Loss [",sl,"]")      ;
                break                                            ;
              default :
@@ -426,11 +426,11 @@ double MoneyManagement:: CalculateSL(int op, double openPrice  ,int    sl_type, 
       switch(sl_type)
            {
              case 0:
-                  sl = Bid+(value*point)                        ;
+                  sl = Bid+ value*point                         ;
                   Print("Case Fix:Stop Loss [",sl,"]")          ;
                   break                                         ;
              case 1:
-                  sl=Bid+(atr*value)                            ;
+                  sl=Bid+ atr*value                             ;
                   Print("Case Volatility:Stop Loss [",sl,"]")   ;
                   break                                         ;
            }       
@@ -468,12 +468,12 @@ double MoneyManagement:: CalculateSL(string x,int op, double openPrice  ,int    
        switch(sl_type)
          {
             case 0:
-               sl = _Bid -(value*point)                          ;
+               sl = _Bid - value*point                           ;
                Print("Case Fix:Stop Loss [",sl,"]")             ;
                break                                            ;
             case 1:
-               sl = _Bid -(atr*value)                            ;
-               Print("Case Volatility:Stop Loss [",sl,"]")      ;
+               sl = _Bid - atr*value                             ;
+               Print("Bid[",_Bid,"]Case Volatility:Stop Loss [",sl,"]")      ;
                break                                            ;
              default :
                Print("Error in SL Type. [",sl_type,"]")         ;
@@ -497,12 +497,12 @@ double MoneyManagement:: CalculateSL(string x,int op, double openPrice  ,int    
       switch(sl_type)
            {
              case 0:
-                  sl = _Bid+(value*point)                        ;
+                  sl = _Bid+ value*point                         ;
                   Print("Case Fix:Stop Loss [",sl,"]")          ;
                   break                                         ;
              case 1:
-                  sl=_Bid+(atr*value)                            ;
-                  Print("Case Volatility:Stop Loss [",sl,"]")   ;
+                  sl=_Bid+ atr*value                             ;
+                  Print("Bid[",_Bid,"]Case Volatility:Stop Loss [",sl,"]")   ;
                   break                                         ;
            }       
          if(sl-openPrice>=minsl )
@@ -695,8 +695,8 @@ bool MoneyManagement:: EquityBasedClose(bool useProfit, double profitTarget, boo
          //if(OrderSymbol()==Symbol() && OrderMagicNumber()==Magic_Numb)
           {
                total+=OrderProfit();
-               if(total>= profitTarget)break;
-               else if(useStop && total<=stopLevel)break;             
+               /*if(total>= profitTarget)break;
+               else if(useStop && total<=stopLevel)break;*/             
           }
        }
     }
