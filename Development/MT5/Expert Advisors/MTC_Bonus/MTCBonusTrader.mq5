@@ -71,7 +71,6 @@ input E_Grid_Direction Grid_Direction=0;//Grid Direction
 input bool  Negative_Grid_Enable=true;
 input int   magic_num=46598; //Magic Number
 input double  Lot_Size=0.01;// Lot Size
-input double  Grid_Multiplier=1.25;//Grid Lot Multiplier
 E_SST  Strategy_Type=0;//Strategy Type
 input string  Comment_Order="MTC-B";//Comment Order
 input double  TP_Point=2500;//TP Point
@@ -83,11 +82,8 @@ input double  Grid_Tp = 2500;
 input int  Grid_Max_Legs=10;//Grid Max Legs 
 input bool UseCloseLeg = false;//Use Close Leg
 input int  CloseLegN   = 5;   //PNL Close N Legs 
-input bool UseHedgeNLegs = false; //Use hedge legs after n legs
-input int  NLegsHedge    = 5;     //N Leg Hedge 
-
  BBM     Bollinger_Bands_Method=0;// Bollinger Bands
-
+ double  Grid_Multiplier=1.25;//Grid Multiplier
  bool   Grid_Hide_all_TP_SL=true;//Grid Hide all TP/SL  
  string  Bollinger_Bands_Setting="=====  Bollinger Bands =====";
  int     BB_Period=20;// Bollinger Bands Period
@@ -432,8 +428,7 @@ void OnTick()
             double lot_size_T=NormalizeDouble(lot_prev*Grid_Multiplier,2);
             double lot_size_G=NormalizeDouble(MathPow(Grid_Multiplier,C_B)*Lot_Size,2);
             double lots_n = NormalizeDouble(Lot_Size * MathPow(Grid_Multiplier, buy_legs),2);
-            double lotStep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-            lots_n=MathRound(lots_n/lotStep)*lotStep;
+            
             Print("Previous Lot size: "+(string)lot_prev);
             //if(lot_size_T > lot_size_G)
             //   lot_size_G = lot_size_T;
@@ -465,8 +460,6 @@ void OnTick()
             C_S++;
             double lot_size_G=NormalizeDouble(MathPow(Grid_Multiplier,C_S)*Lot_Size,2);
             double lots_n = NormalizeDouble(Lot_Size * MathPow(Grid_Multiplier, sell_legs),2);
-            double lotStep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-            lots_n=MathRound(lots_n/lotStep)*lotStep;
             
             if( (Grid_Direction==1||Grid_Direction==2) || (Strategy_Type == MA_Directional || Strategy_Type == MA_Reversal || Strategy_Type == Open_Now)){
                double tp =0.0;
@@ -529,9 +522,6 @@ void OnTick()
             CloseAllPositions(POSITION_TYPE_SELL);
             Alert("Closing sell legs.");
          }      
-      }
-      if(UseHedgeNLegs){
-         HedgeLegsMonitor();
       }
       CheckLoss();
       CheckProfit();
@@ -608,65 +598,6 @@ void OnChartEvent(const int id,
    }
     ChartRedraw();
    
-}
-void HedgeLegsMonitor(){
-   int b_legs=0, s_legs=0, bh_leg =0, sh_leg =0;
-   double b_lots=0.0, s_lots =0.0, bh_lots =0.0, sh_lots =0;
-   int total = CalculateCurrentOrders2(b_legs,b_lots,s_legs,s_lots,bh_leg,bh_lots,sh_leg,sh_lots);
-   
-   //Print("BUY["+IntegerToString(b_legs)+"] SELL["+IntegerToString(s_legs)+"] Total["+IntegerToString(total)+"]");
-   if(b_legs >= NLegsHedge){
-      if(sh_leg == 0){
-         if(trade.Sell(b_lots,NULL,SymbolInfoDouble(Symbol(),SYMBOL_BID),NULL,NULL,Comment_Order+"-Hedge")){
-            SetTpToZero(POSITION_TYPE_BUY);
-         }
-      }
-      //Check if next buy hedge needs to be open
-      if(sh_leg>=1){
-         int rounded_legs = round((b_legs/NLegsHedge));
-        // Alert("Locking buy- Rounded legs["+rounded_legs+"]");
-        //Print("Locking buy- Rounded legs["+rounded_legs+"]Hedged Sells["+sh_leg+"]");
-         if(rounded_legs > sh_leg){
-            Print("Locking buy- Rounded legs["+rounded_legs+"] Hedged Sells["+sh_leg+"]");
-            double new_lots = b_lots - sh_lots; 
-            if(trade.Sell(new_lots,NULL,SymbolInfoDouble(Symbol(),SYMBOL_BID),NULL,NULL,Comment_Order+"-Hedge")){
-               SetTpToZero(POSITION_TYPE_BUY);
-            }
-         }     
-      }
-      
-   }
-   if(s_legs >= NLegsHedge){
-      if(bh_leg == 0){
-         if(trade.Buy(s_lots,NULL,SymbolInfoDouble(Symbol(),SYMBOL_ASK),NULL,NULL,Comment_Order+"-Hedge")){
-            SetTpToZero(POSITION_TYPE_SELL);
-         }
-      }
-      
-      if(bh_leg>=1){
-         int rounded_legs = round((s_legs/NLegsHedge));
-         //Print("Locking sell- Rounded legs["+rounded_legs+"]Hedged Buys["+bh_leg+"]");
-         if(rounded_legs > bh_leg){
-            Print("Locking sell- Rounded legs["+rounded_legs+"]");
-            double new_lots = b_lots - bh_lots; 
-            if(trade.Sell(new_lots,NULL,SymbolInfoDouble(Symbol(),SYMBOL_BID),NULL,NULL,Comment_Order+"-Hedge")){
-               SetTpToZero(POSITION_TYPE_SELL);
-            }
-         }     
-      } 
-   }
-
-}
-void SetTpToZero(int op){
-   double  num=0;
-   for(int i=0; i<PositionsTotal(); i++)
-   {
-      if(PositionGetTicket(i))
-      {
-         if(PositionGetInteger(POSITION_MAGIC)==magic_num && PositionGetString(POSITION_SYMBOL)==Symbol() && PositionGetInteger(POSITION_TYPE) == op)
-            trade.PositionModify(PositionGetTicket(i),NULL,NULL);
-      }
-   }
 }
 double PointsSignal(int op){
    int legs = CalculateCurrentOrders2( );
@@ -1030,7 +961,7 @@ int CalculateCurrentOrders2( )
    {
       if(PositionGetTicket(i))
       {
-         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num && PositionGetString(POSITION_COMMENT)==Comment_Order)
+         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num)
             k++;
       }
 
@@ -1049,7 +980,7 @@ int CalculateCurrentOrders2(int &buy_c , int &sell_c )
    {
       if(PositionGetTicket(i))
       {
-         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num && PositionGetString(POSITION_COMMENT)== Comment_Order){
+         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num){
             long op = PositionGetInteger(POSITION_TYPE);
             if(op == POSITION_TYPE_BUY){
                buy_c++;
@@ -1063,76 +994,6 @@ int CalculateCurrentOrders2(int &buy_c , int &sell_c )
       }
 
    }
-   return(k);
-
-
-}
-int CalculateCurrentOrders2(int &buy_c, double &lots_b , int &sell_c , double &lots_s)
-{
-
-//---
-   int k=0;
-
-   for(int i=0; i<PositionsTotal(); i++)
-   {
-      if(PositionGetTicket(i))
-      {
-         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num) 
-            if(PositionGetString(POSITION_COMMENT)==Comment_Order){
-               long op = PositionGetInteger(POSITION_TYPE);
-               if(op == POSITION_TYPE_BUY){
-                  buy_c++;
-                  lots_b+= PositionGetDouble(POSITION_VOLUME);
-               }
-               if(op == POSITION_TYPE_SELL){
-                  sell_c++;
-                  lots_s+= PositionGetDouble(POSITION_VOLUME);
-               }
-               k++;
-            }
-        }           
-      }
-   return(k);
-
-
-}
-int CalculateCurrentOrders2(int &buy_c, double &lots_b , int &sell_c , double &lots_s, int &h_legs_b, double &h_lots_b,int &h_legs_s, double &h_lots_s)
-{
-
-//---
-   int k=0;
-
-   for(int i=0; i<PositionsTotal(); i++)
-   {
-      if(PositionGetTicket(i))
-      {
-         if(PositionGetString(POSITION_SYMBOL)==Symbol()  && PositionGetInteger(POSITION_MAGIC)==magic_num) 
-            if(PositionGetString(POSITION_COMMENT) ==Comment_Order ){
-               long op = PositionGetInteger(POSITION_TYPE);
-               if(op == POSITION_TYPE_BUY){
-                  buy_c++;
-                  lots_b+= PositionGetDouble(POSITION_VOLUME);
-               }
-               if(op == POSITION_TYPE_SELL){
-                  sell_c++;
-                  lots_s+= PositionGetDouble(POSITION_VOLUME);
-               }
-               k++;
-            }
-            if(PositionGetString(POSITION_COMMENT) == (Comment_Order+"-Hedge")){
-            long op = PositionGetInteger(POSITION_TYPE);
-               if(op == POSITION_TYPE_BUY){
-                  h_legs_b++;
-                  h_lots_b+= PositionGetDouble(POSITION_VOLUME);
-               }
-               if(op == POSITION_TYPE_SELL){
-                  h_legs_s++;
-                  h_lots_s+= PositionGetDouble(POSITION_VOLUME);
-               }
-               k++;
-            }
-         }                     
-      }
    return(k);
 
 

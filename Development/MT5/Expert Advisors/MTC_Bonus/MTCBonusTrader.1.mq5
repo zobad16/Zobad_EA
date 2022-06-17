@@ -71,6 +71,7 @@ input E_Grid_Direction Grid_Direction=0;//Grid Direction
 input bool  Negative_Grid_Enable=true;
 input int   magic_num=46598; //Magic Number
 input double  Lot_Size=0.01;// Lot Size
+input double  Grid_Multiplier=1.25;//Grid Lot Multiplier
 E_SST  Strategy_Type=0;//Strategy Type
 input string  Comment_Order="MTC-B";//Comment Order
 input double  TP_Point=2500;//TP Point
@@ -86,7 +87,7 @@ input bool UseHedgeNLegs = false; //Use hedge legs after n legs
 input int  NLegsHedge    = 5;     //N Leg Hedge 
 
  BBM     Bollinger_Bands_Method=0;// Bollinger Bands
- double  Grid_Multiplier=1.25;//Grid Multiplier
+
  bool   Grid_Hide_all_TP_SL=true;//Grid Hide all TP/SL  
  string  Bollinger_Bands_Setting="=====  Bollinger Bands =====";
  int     BB_Period=20;// Bollinger Bands Period
