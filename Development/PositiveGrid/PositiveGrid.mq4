@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                 NegativeGrid.mq4 |
+//|                                                 PositiveGrid.mq4 |
 //|                                               Algo Tradeup, 2020 |
 //|                                          https://algotradeup.com |
 //+------------------------------------------------------------------+
@@ -43,15 +43,16 @@ input bool                       Negative_Grid_Enable=true;
 input double                     Lot_Size=0.01;// Lot Size
 input OrderDirection             Direction         = LONG;
 input Type_Strategy              Strategy_Type=OPEN_NOW;//Strategy Type
-input string                     Comment_Order="NEGATIVE_GRID";//Comment Order
+input string                     Comment_Order="Positive-Grid";//Comment Order
 input double                     TP_Point=100;//TP Point
-input double                     TP_Money=100;//TP $Money
+input double                     SL_Point=100;//SL Point
 input bool                       UsePNLStop = true;   //Use TP$/SL$
-input double                     Grid_Risk_Money=100;//Grid Risk $Money
+input double                     TP_Money=100;//TP $Money
+input double                     SL_Money=100;//SL $Money
 input double                     Distance_Point=50;//Grid Leg Threshold(Points)
 input int                        Grid_Max_Legs=10;//Grid Max Legs 
 input double                     Grid_Multiplier=1.25;//Grid Multiplier
-//input bool                       Grid_Hide_all_TP_SL=true;//Grid Hide all TP/SL 
+input bool                       Grid_Hide_all_TP_SL=true;//Grid Hide all TP/SL 
 
 int Slippage = 33; 
 double l_lots = 0.0;
@@ -64,16 +65,16 @@ int OnInit()
    if(Trade_Symbol == ""){
       Print("INIT failed. Reason incorrect symbol name");
       return (INIT_FAILED);
-   }
+   }  
    EventSetTimer(1);
-   Dialog.Create(ChartID(),"                                      ALGOTRADEUP",0,5,5,400,200);
+   Dialog.Create(ChartID(),"                                      ALGOTRADEUP",0,5,5,450,200);
    string dialogNumber=Dialog.Name();
    ObjectSetInteger(ChartID(),dialogNumber+"Caption",OBJPROP_BGCOLOR,clrGold);
    ObjectSetInteger(ChartID(),dialogNumber+"ClientBack",OBJPROP_BGCOLOR,clrWhite);
    
 //---
    TitleBtn.Create(0,"Title",0,5,6,0,0)                              ;
-   TitleBtn.Text("Martingale")                                            ;
+   TitleBtn.Text("Anti-Martingale")                                            ;
    TitleBtn.FontSize(12)                                          ;                                    
    TitleBtn.Height(35)                                            ;
    TitleBtn.Width(200)                                            ;
@@ -167,17 +168,6 @@ int OnInit()
    LabelsValues[3].Text("0.0");
    LabelsValues[3].FontSize(10);
    Dialog.Add(LabelsValues[3]);
-   /*
-   Labels[3].Create(0,"PointsLbl",0,230,65,30,0);
-   Labels[3].Text("Next Entry:");
-   Labels[3].FontSize(10);
-   Dialog.Add(Labels[3]);
-   LabelsValues[3].Create(0,"PointsValue",0,320,65,30,0);
-   LabelsValues[3].Text("-");
-   LabelsValues[3].FontSize(10);
-   Dialog.Add(LabelsValues[3]);
-   
-   */
 //---
    return(INIT_SUCCEEDED);
   }
@@ -200,9 +190,9 @@ void OnTick()
    int op = -99;
    if(Direction == LONG ) op = OP_BUY;
    else if(Direction == SHORT)op = OP_SELL;
-   
    //first leg
-   if(IsOrdersTotal(magic_num)<1){
+   if(IsOrdersTotal(magic_num)<1)
+   {
       int entry = EntrySignal();
       if(entry == LONG ){
          SendOrder(OP_BUY, Trade_Symbol);
@@ -249,7 +239,6 @@ void OnTimer()
    LabelsValues[1].Text((string)PointsSignal(op));
    LabelsValues[2].Text(dir);
    LabelsValues[3].Text((string)pnl);
-
 }
 //+------------------------------------------------------------------+
 //| Tester function                                                  |
@@ -273,6 +262,7 @@ void OnChartEvent(const int id,
                   const string &sparam)
   {
 //---
+   Dialog.OnEvent(id,lparam,dparam,sparam);
    if(id == CHARTEVENT_OBJECT_CLICK){
       if(sparam == "")
       return;
@@ -358,12 +348,13 @@ bool SendOrder(int op, string symbol)
       price = MarketInfo(symbol,MODE_ASK);
       if(avg_price == 0)avg_price = price;
       tp = avg_price + (TP_Point*MarketInfo(symbol,MODE_POINT));
-      
+      sl = avg_price - (SL_Point*MarketInfo(symbol,MODE_POINT));
    }   
    if(op == OP_SELL){
       price = MarketInfo(symbol,MODE_BID);
       if(avg_price == 0)avg_price = price;
-      tp = avg_price  - (TP_Point*MarketInfo(symbol,MODE_POINT));      
+      tp = avg_price  - (TP_Point*MarketInfo(symbol,MODE_POINT));
+      sl = avg_price  + (SL_Point*MarketInfo(symbol,MODE_POINT));
    }   
    Print("AvgPrice:{"+(string)avg_price+"} TP: {"+(string)tp+"} SL{"+(string)sl+"}");
    int ticket= OrderSend(symbol,op,NormalizeDouble(new_lot,2),price,Slippage,0,0,Comment_Order,magic_num);
@@ -384,17 +375,23 @@ void ModifyOrder(int op){
             if(OrderMagicNumber()==magic_num && OrderSymbol()== Trade_Symbol && OrderType() == op)
              {
                if(avg_price == 0)avg_price = OrderOpenPrice();
-                if(op == OP_BUY)
-                  tp = avg_price + (TP_Point*MarketInfo(Trade_Symbol,MODE_POINT));   
-               if(op == OP_SELL)
-                  tp = avg_price  - (TP_Point*MarketInfo(Trade_Symbol,MODE_POINT));   
-               if(!OrderModify(OrderTicket(),OrderOpenPrice(),0,tp,0,clrGreen))
+                if(op == OP_BUY){
+                  tp = avg_price + (TP_Point*MarketInfo(Trade_Symbol,MODE_POINT));
+                  sl = avg_price - (SL_Point*MarketInfo(Trade_Symbol,MODE_POINT));
+               }   
+               if(op == OP_SELL){
+                  tp = avg_price  - (TP_Point*MarketInfo(Trade_Symbol,MODE_POINT));
+                  sl = avg_price  + (SL_Point*MarketInfo(Trade_Symbol,MODE_POINT));
+               }   
+               if(!OrderModify(OrderTicket(),OrderOpenPrice(),sl,tp,0,clrGreen))
                   Print("Error in OrderModify. Error code=",GetLastError()); 
                else 
                   Print("Order modified successfully."); 
-              }                               
-          }
-      }
+           } 
+               
+                 
+             }
+         }
 
       
 }
@@ -419,6 +416,7 @@ double CalculateLotsSize()
       return Lot_Size;  
    double lot_size_G=NormalizeDouble(MathPow(Grid_Multiplier,legs)*Lot_Size,2);
    return lot_size_G;
+   
 }
 int IsLegsTotal(int mg, string symbol)
   {
@@ -459,7 +457,7 @@ int IsLegsTotal(int mg, string symbol)
       return k;
    
 
-}   
+} 
 //+------------------------------------------------------------------+
 void CloseAllPositions(){
    CloseAllOrders(magic_num);
@@ -485,12 +483,12 @@ bool LegEntrySignal(int op){
       double last_price = LastOrderPrice(op);
       double _bid = MarketInfo(Trade_Symbol,MODE_BID);
       double _ask = MarketInfo(Trade_Symbol,MODE_ASK);
-      if(op == OP_SELL){
+      if(op == OP_BUY){
          if(_bid >= last_price+ Distance_Point*Point()){
             return true;
          }     
       }
-      else if(op == OP_BUY){
+      else if(op == OP_SELL){
          if(_ask <= last_price- Distance_Point*Point()){
             return true;
          }
@@ -505,11 +503,14 @@ double PointsSignal(int op){
       double last_price = LastOrderPrice(op);
       double _bid = MarketInfo(Trade_Symbol,MODE_BID);
       double _ask = MarketInfo(Trade_Symbol,MODE_ASK);
-      
-      if(op == OP_BUY)
-         return (last_price- Distance_Point*Point());     
-      else if(op == OP_SELL)
+      if(op == OP_BUY){
          return (last_price+ Distance_Point*Point());     
+      }
+      else if(op == OP_SELL){
+         if(_ask <= last_price- Distance_Point*Point()){
+            return (last_price- Distance_Point*Point());
+         }
+      }
    }
    return 0.0;
 }
@@ -579,13 +580,14 @@ void ProfitMonitor(){
          Print("TP$: "+(string)pnl+" reached. Closing positions");
          CloseAllPositions();
       }
-      else if(pnl < Grid_Risk_Money*(-1)){
+      else if(pnl < SL_Money*(-1)){
          Print("SL$: "+(string)pnl+" reached. Closing positions");
          CloseAllPositions();
       }
    
    }
 }
+  
 //+------------------------------------------------------------------+
 //|CalculateTotalProfit: Returns Equity Profit                       |
 //+------------------------------------------------------------------+
