@@ -86,9 +86,13 @@ input int  CloseLegN   = 5;   //PNL Close N Legs
 input bool UseHedgeNLegs = false; //Use hedge legs after n legs
 input int  NLegsHedge    = 5;     //N Leg Hedge 
 
- BBM     Bollinger_Bands_Method=0;// Bollinger Bands
+input string  RSI_Setting="=====  RSI Settings =====";
+input int     RSIPeriod       = 14;      // RSI period
+input ENUM_TIMEFRAMES RSI_Timeframe = PERIOD_H1; //RSI Timeframe
+input ENUM_APPLIED_PRICE  RSI_Applied_Price=PRICE_CLOSE;// RSI Applied Price
 
  bool   Grid_Hide_all_TP_SL=true;//Grid Hide all TP/SL  
+  BBM     Bollinger_Bands_Method=0;// Bollinger Bands
  string  Bollinger_Bands_Setting="=====  Bollinger Bands =====";
  int     BB_Period=20;// Bollinger Bands Period
  double  BB_deviation=2;// Bollinger Bands deviation
@@ -112,6 +116,10 @@ double DNBB1[];
 bool reset;
 double point_signal = 0.0;
 int    ExtHandle=0;
+const int SIGNAL_BUY = 1;
+const int SIGNAL_SELL = -1;
+const int SIGNAL_NONE = 0;
+int handle_rsi =0;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -128,6 +136,12 @@ int OnInit()
    if(ExtHandle==INVALID_HANDLE)
      {
       printf("Error creating MA indicator");
+      return(INIT_FAILED);
+     }
+   handle_rsi = iRSI(Symbol(),RSI_Timeframe,RSIPeriod, RSI_Applied_Price); 
+    if(handle_rsi==INVALID_HANDLE)
+     {
+      printf("Error creating RSI indicator");
       return(INIT_FAILED);
      }
    trade.SetExpertMagicNumber(magic_num);
@@ -536,6 +550,25 @@ void OnTick()
       CheckLoss();
       CheckProfit();
    }
+}
+int CheckEntrySignal(){
+   //RSI Signal check
+   /*int  iRSI(
+   string              symbol,            // symbol name
+   ENUM_TIMEFRAMES     period,            // period
+   int                 ma_period,         // averaging period
+   ENUM_APPLIED_PRICE  applied_price      // type of price or handle
+   );*/
+   
+   double rsi_buffer[];
+   ArraySetAsSeries(rsi_buffer, true);
+   if (CopyBuffer(handle_rsi,0,0,20,rsi_buffer) < 0){Print("CopyBufferRSI error =",GetLastError());}
+   //Moving Average signal
+   
+   
+   //Manual
+   
+   return SIGNAL_NONE;
 }
 //+------------------------------------------------------------------+
 //| ChartEvent function                                              |

@@ -420,23 +420,15 @@ void OnTick()
       if(buy_legs>0 &&  total_orders>0 && buy_legs<(Grid_Max_Legs))
       {
          double trigger_price =point_signal;
-         /*if(trigger_price == 0)
-            return;
-         *///GB[C_B] = LastOrderPrice(ORDER_TYPE_BUY);
-         //if(SymbolInfoDouble(Symbol(),SYMBOL_ASK)<=(trigger_price) && trigger_price > 0)
          if(LegEntryCheck(POSITION_TYPE_BUY))
          {
-            //Alert("Buy Trigger point ="+(string)trigger_price);
             C_B++;
             double lot_prev = CalculateOrderLots(1 );
             double lot_size_T=NormalizeDouble(lot_prev*Grid_Multiplier,2);
             double lot_size_G=NormalizeDouble(MathPow(Grid_Multiplier,C_B)*Lot_Size,2);
             double lots_n = NormalizeDouble(Lot_Size * MathPow(Grid_Multiplier, buy_legs),2);
-            double lotStep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-            lots_n=MathRound(lots_n/lotStep)*lotStep;
+            
             Print("Previous Lot size: "+(string)lot_prev);
-            //if(lot_size_T > lot_size_G)
-            //   lot_size_G = lot_size_T;
             if( (Grid_Direction==0||Grid_Direction==2)|| (Strategy_Type == MA_Directional || Strategy_Type == MA_Reversal|| Strategy_Type == Open_Now)){
                double tp =0.0;
                if(Grid_Tp_Type == Fixed){
@@ -461,12 +453,9 @@ void OnTick()
          double trigger_price =point_signal ;
          if(LegEntryCheck(POSITION_TYPE_SELL))
          {
-            //Alert("Sell Trigger point ="+(string)trigger_price);
             C_S++;
             double lot_size_G=NormalizeDouble(MathPow(Grid_Multiplier,C_S)*Lot_Size,2);
             double lots_n = NormalizeDouble(Lot_Size * MathPow(Grid_Multiplier, sell_legs),2);
-            double lotStep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-            lots_n=MathRound(lots_n/lotStep)*lotStep;
             
             if( (Grid_Direction==1||Grid_Direction==2) || (Strategy_Type == MA_Directional || Strategy_Type == MA_Reversal || Strategy_Type == Open_Now)){
                double tp =0.0;
@@ -625,7 +614,7 @@ void HedgeLegsMonitor(){
       if(sh_leg>=1){
          int rounded_legs = round((b_legs/NLegsHedge));
         // Alert("Locking buy- Rounded legs["+rounded_legs+"]");
-        //Print("Locking buy- Rounded legs["+rounded_legs+"]Hedged Sells["+sh_leg+"]");
+        Print("Locking buy- Rounded legs["+rounded_legs+"]Hedged Sells["+sh_leg+"]");
          if(rounded_legs > sh_leg){
             Print("Locking buy- Rounded legs["+rounded_legs+"] Hedged Sells["+sh_leg+"]");
             double new_lots = b_lots - sh_lots; 
@@ -645,7 +634,7 @@ void HedgeLegsMonitor(){
       
       if(bh_leg>=1){
          int rounded_legs = round((s_legs/NLegsHedge));
-         //Print("Locking sell- Rounded legs["+rounded_legs+"]Hedged Buys["+bh_leg+"]");
+         Print("Locking sell- Rounded legs["+rounded_legs+"]Hedged Buys["+bh_leg+"]");
          if(rounded_legs > bh_leg){
             Print("Locking sell- Rounded legs["+rounded_legs+"]");
             double new_lots = b_lots - bh_lots; 
