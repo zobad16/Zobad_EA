@@ -1,0 +1,572 @@
+
+'''#####################################################################################
+'''####     Script Name: OCO - One Cancels Other                                  ######
+'''####     Author     : Joy Sebastian                                            ######
+'''####     e-mail     : joy.edakad@gmail.com                                     ######
+'''####     Date       : 16/02/2015 16:34:46                                      ######
+'''####     Description: OCO Expert opens 2 orders, one stop buy and one stop sell.#####
+'''####            When one of these 2 orders is filled, it cancels the other     ######
+'''####            order and trails the open trade with trailing StopLoss. Specify #####
+'''####            start hour to send orders with HourStart parameter and also the #####
+'''####            take profit, stop loss and trail stoploss in pips. The script  ######
+'''####            can be used to manage 2 orders place manually as OCO, for this ######
+'''####            add the OCO script to chart after manually placing the orders. ######
+'''#####################################################################################
+
+''' parameters
+
+dim closeAtDayEnd, distance, stoploss, takeprofit, lots, trailingstop, slippage, hourStart
+
+'''##############################  INPUT PARAMETERS ###########################################################################
+
+closeAtDayEnd        = false        ''' Close position at Day end
+distance             = 20            ''' Open stop buy and sell orders at start Hours "distance" pips away from current price.
+stoploss             = 50           ''' pips
+takeprofit           = 100          ''' pips
+lots                 = 0.1          ''' lot size to trade
+trailingStop         = 20           ''' trailing stop loss in pips
+hourStart            = 8           ''' The hour of the day to send 2 OCO orders. If OCO orders are placed manually and then OCO script is attached
+                                    ''' EA will not sed OCO orders at "hoursStart". This feature can be used to manage manually placed OCO orders.
+
+'''#############################################################################################################################
+
+dim Point, openCounterOrder, orderSent
+openCounterOrder = false
+orderSent = false
+Dim AlertobjID1             ''' 3 label objects on chart are used to communicate with the
+Dim AlertobjID2				''' user through alerts
+Dim AlertobjID3
+Dim fontSize
+Dim objColor
+AlertobjID1 = "a1"     
+AlertobjID2 = "a2"
+AlertobjID3 = "a3"
+
+
+dim Ask, Bid, buyOpen, buyStop, sellOpen, sellStop, tradeAction, alertMessage, alertNum
+tradeAction = ""
+alertMessage = ""
+alertNum = 0
+
+dim objOrderBuyHL, objOrderSellHL, ordBuyPrice, ordSellPrice, objOrderBuyArrow, objOrderSellArrow, SLHL,TPHL, sSLprice, sTPprice, bSLprice, bTPprice
+dim objOrderSellText, objOrderBuyText, objOpnPrice, objOpnText, objTPtext, objSLtext
+objOrderBuyHL = "Line1"
+objOrderSellHL = "Line2"
+objOrderBuyArrow = "arrow1"
+objOrderSellArrow = "arrow2"
+SLHL = "SLHL1"
+TPHL = "TPHL1"
+objOpnPrice = "opnPrice"
+objOrderSellText = "text1"
+objOrderBuyText  = "text2"
+objTPtext  = "tpText"
+objSLtext  = "slText"
+
+dim prvPosCount
+prvPosCount = 0
+
+PRIVATE SUB Alert(alertText)
+
+alertMessage =  curTime() + " : " + alertText
+
+fontSize=6
+
+if CINT(alertNum) = 0 then
+	deleteAlert()
+	playBeep()
+	CreateObjectLabel 0,0,CSTR(AlertobjID1),20,30, alertMessage
+	objColor=RGBColor(229,172,77)
+	ObjectSetText 0,CSTR(AlertobjID1),CINT(fontSize),,CLNG(objColor)
+	alertNum = 1
+	exit sub
+end if
+
+if CINT(alertNum) = 1 then
+	deleteAlert()
+	playBeep()
+	CreateObjectLabel 0,0,CSTR(AlertobjID2),20,50, alertMessage
+	objColor=RGBColor(229,172,77)
+	ObjectSetText 0,CSTR(AlertobjID2),CINT(fontSize),,CLNG(objColor)
+	alertNum = 2
+	exit sub
+end if
+
+if CINT(alertNum) = 2 then
+	deleteAlert()
+	playBeep()
+	CreateObjectLabel 0,0,CSTR(AlertobjID3),20,70, alertMessage
+	objColor=RGBColor(229,172,77)
+	ObjectSetText 0,CSTR(AlertobjID3),CINT(fontSize),,CLNG(objColor)
+	alertNum = 0
+	exit sub
+end if
+
+
+END SUB
+
+
+
+PRIVATE SUB deleteAlert()
+
+alertExits1 = objectFind(0,CSTR(AlertobjID1))
+alertExits2 = objectFind(0,CSTR(AlertobjID2))
+alertExits3 = objectFind(0,CSTR(AlertobjID3))
+
+if alertNum = 0 then
+	if alertExits1 then
+		ObjectDelete 0,CSTR(AlertobjID1)
+	end if
+end if
+if alertNum = 1 then
+	if alertExits2 then
+		ObjectDelete 0,CSTR(AlertobjID2)
+	end if
+end if
+if alertNum = 2 then
+	if alertExits3 then
+		ObjectDelete 0,CSTR(AlertobjID3)
+	end if
+end if
+
+
+END SUB
+
+
+
+private function OpenPendingOrder(pType,pLots,pLevel,sl, tp)
+
+	SymbolInfoDouble  chartSymbol(0) , SYMBOL_ASK , Ask
+	SymbolInfoDouble  chartSymbol(0) , SYMBOL_BID , Bid
+
+	Select case pType
+	case TRADE_ACTION_BUY
+		
+		Alert "BuyLimit - Ask:" + CSTR(Ask) + " Bid:" + CSTR(Bid) + " Open:" + CSTR(Ask-pLevel*point) + " Stop Loss:" + CSTR((Ask-pLevel*Point)-sl*Point)
+		OpenPendingOrder = NewLimitOrder( TRADE_ACTION_BUY , chartSymbol(0), CDBL(pLots), CDBL(Ask-pLevel*point), CDBL((Ask-pLevel*Point)-sl*Point), CDBL((Ask-pLevel*Point)+tp*Point))
+		if not OpenPendingOrder then
+			PrintData("OCO NEW LIMIT BUY ORDER ERROR: " & ErrorDescription(GetLastError()))
+			Alert ErrorDescription(GetLastError())
+		end if
+		exit function
+	
+	case TRADE_ACTION_BUY_STOP
+		Alert "BuyStop - Ask:" + CSTR(Ask) + " Bid:" + CSTR(Bid) + " Open:" + CSTR(Ask+pLevel*point) + " Stop Loss:" + CSTR((Ask+pLevel*Point)-sl*Point)
+		OpenPendingOrder = NewLimitOrder (TRADE_ACTION_BUY_STOP , chartSymbol(0), CDBL(pLots), CDBL(Ask+pLevel*point), CDBL((Ask+pLevel*Point)-sl*Point), CDBL((Ask+pLevel*Point)+tp*Point))
+		if not OpenPendingOrder then
+			PrintData("OCO NEW STOP LIMIT BUY ORDER ERROR: " & ErrorDescription(GetLastError()))
+			Alert ErrorDescription(GetLastError())
+		end if
+		exit function
+
+	case TRADE_ACTION_SELL
+		Alert "SellLimit - Ask:" + CSTR(Ask) + " Bid:" + CSTR(Bid) + " Open:" + CSTR(Bid+pLevel*point) + " Stop Loss:" + CSTR((Bid+pLevel*Point)+sl*Point)
+		OpenPendingOrder = NewLimitOrder( TRADE_ACTION_SELL , chartSymbol(0), CDBL(pLots), CDBL(Bid+pLevel*point), CDBL((Bid+pLevel*Point)+sl*Point), CDBL((Bid+pLevel*Point)-sl*Point))
+		if not OpenPendingOrder then
+			PrintData("OCO NEW LIMIT SELL ORDER ERROR: " & ErrorDescription(GetLastError()))
+			Alert ErrorDescription(GetLastError())
+		end if
+		exit function
+
+	case TRADE_ACTION_SELL_STOP
+
+		Alert "SellStop - Ask:" + CSTR(Ask) + " Bid:" + CSTR(Bid) + " Open:" + CSTR(Bid-pLevel*point) + " Stop Loss:" + CSTR((Bid-pLevel*Point)+sl*Point)
+		OpenPendingOrder = NewLimitOrder( TRADE_ACTION_SELL_STOP , chartSymbol(0), CDBL(pLots), CDBL(Bid-pLevel*point), CDBL((Bid-pLevel*Point)+sl*Point), CDBL((Bid-pLevel*Point)-sl*Point) )
+		if not OpenPendingOrder then
+			PrintData("OCO NEW STOP LIMIT SELL ORDER ERROR: " & ErrorDescription(GetLastError()))
+			Alert ErrorDescription(GetLastError())
+		end if
+		exit function
+
+	end select
+
+
+end function
+
+
+private function GetOrderType(xType)
+
+	if xType = TRADE_ACTION_BUY then
+		GetOrderType = "Buy Limit Pending Position"
+		exit function
+	end if
+	if xType = TRADE_ACTION_BUY_STOP then
+		GetOrderType = "Buy Stop Pending Position"
+		exit function
+	end if
+	if xType = TRADE_ACTION_SELL then
+		GetOrderType = "Sell Limit Pending Position"
+		exit function
+	end if
+	if xType = TRADE_ACTION_SELL_STOP then
+		GetOrderType = "Sell sTOP Pending Position"
+		exit function
+	end if
+
+end function
+
+
+
+private function isNewSymbol(currentSymbol) 
+
+	dim totalOrders 
+	totalOrders = ordersTotal()
+	for i = 1 to totalOrders
+		OrderSelectByIndex(i)
+		selectedSymbol = OrderSymbol()
+		if currentSymbol = selectedSymbol then
+			isNewSymbol = false
+			exit function
+		end if 
+	next
+	isNewSymbol = true	
+	orderSent = false
+	
+end function
+
+Private Sub CloseOposite(xType)
+
+dim totalOrders
+totalOrders = ordersTotal()
+
+for i = 1 to totalOrders
+	OrderSelectByIndex(CINT(i))
+	OrderGetInteger OPERATION_TYPE_ENUM,result
+	if OrderSymbol() = chartSymbol(0) and result = xType then
+		DeleteLimitOrder(OrderGetID(CINT(i)))          ''' Chart drawings for stop orderes are deleted when one order is executed
+		ObjectDelete 0,CSTR(objOrderSellHL)
+		ObjectDelete 0,CSTR(objOrderSellArrow)
+		ObjectDelete 0,CSTR(objOrderBuyHL)
+		ObjectDelete 0,CSTR(objOrderBuyArrow)
+		ObjectDelete 0,CSTR(objOrderBuyText)
+		ObjectDelete 0,CSTR(objOrderSellText)
+
+	end if
+
+next	
+
+
+end sub
+
+private sub CloseDeleteAll()
+
+dim totalOrders
+totalOrders = ordersTotal()
+
+for i = 1 to PositionTotal
+	positionSelect(PositionGetTicket(CINT(i)))
+	if PositionGetSymbol(i) = chartSymbol(0) then
+		PositionGetDouble POSITION_VOLUME, xLots
+		CloseMarketOrder PositionGetTicket(i), xLots
+	end if
+next
+for i = 1 to totalOrders
+	OrderSelectByIndex(i)
+	if OrderSymbol() = chartSymbol(0) then
+		DeleteLimitOrder(CSTR(OrderGetID(CINT(i))))	
+
+	end if
+next
+
+
+end sub
+
+
+
+
+
+Public Sub main()
+
+
+If SymbolInfoInteger(CStr(ChartSymbol()),SYMBOL_PIP_LOCATION,Point) then
+		If Point = -3 OR Point = -5 Then
+	   		Point = 10^(Point+1)
+		Else
+			Point = 10^Point
+		End If
+End if
+
+
+ObjectDeleteAll(0)
+
+
+End Sub
+
+
+
+
+Public Sub OnTick(symbolName)
+
+if symbolName = chartSymbol(0) then
+
+	dim cnt, total, longTicket, shortTicket, hourEnd
+	hourEnd = HourStart-1
+
+	SymbolInfoDouble  chartSymbol(0) , SYMBOL_ASK , Ask
+	SymbolInfoDouble  chartSymbol(0) , SYMBOL_BID , Bid
+
+	total = OrdersTotal()
+
+
+	for i = 1 to total                        '''  Dray the stop oprder lines on chart
+		OrderSelectByIndex(i)
+		if OrderSymbol() = chartSymbol(0) then
+		
+			drawLine((OrderGetID(CINT(i))))	
+
+		end if
+
+	next
+
+
+	if (total < 1 or isNewSymbol(chartSymbol(0))) and Hour(CurTime()) = hourStart and not orderSent then
+		
+		ObjectDelete 0,CSTR(objOrderSellHL)
+		ObjectDelete 0,CSTR(objOrderSellArrow)
+		ObjectDelete 0,CSTR(objOrderBuyHL)
+		ObjectDelete 0,CSTR(objOrderBuyArrow)
+		ObjectDelete 0,CSTR(objOrderBuyText)
+		ObjectDelete 0,CSTR(objOrderSellText)
+		
+
+		if 	OpenPendingOrder( TRADE_ACTION_SELL_STOP, CDBL(lots), CDBL(distance), CDBL(stoploss), CDBL(takeprofit) ) then
+			openCounterOrder = true    ''' The stop Buy order is send in the OnOrderTradeEvent handle
+			orderSent = true
+		else
+				PrintData("OCO FIRST ORDER OPEN ERROR: " & ErrorDescription(GetLastError()))
+				Alert ErrorDescription(GetLastError())
+		end if
+
+	end if
+
+	if closeAtDayEnd and Hour(CurTime()) = hourEnd then
+		
+		CloseDeleteAll()
+
+	end if
+
+	posCount = 0
+	for i = 1 to PositionTotal()
+
+		positionSelect(PositionGetTicket(CINT(i)))
+
+		if PositionGetSymbol(CINT(i)) = chartSymbol(0) then
+
+			posCount = posCount+1
+
+			if GetPositionType() > 0  then
+
+				CloseOposite(TRADE_ACTION_SELL_STOP)
+
+				PositionGetDouble POSITION_PRICE_OPEN,buyOpen
+				tradeAction = "BUY"
+				''' draw lines on chart for open position take profit and stop loss
+				AddObject 0, CSTR(SLHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(bSLprice)
+				ObjectSet 0, CSTR(SLHL), OBJPROP_COLOR , RGBColor(255,0,0)
+				AddObject 0, CSTR(objSLText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(bSLprice)
+				ObjectSet 0, CSTR(objSLText), OBJPROP_TEXT , "StopLoss"
+				AddObject 0, CSTR(TPHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(bTPprice)
+				ObjectSet 0, CSTR(TPHL), OBJPROP_COLOR , RGBColor(255,0,0)
+				AddObject 0, CSTR(objTPText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(bTPprice)
+				ObjectSet 0, CSTR(objTPText), OBJPROP_TEXT , "TakeProfit"
+				AddObject 0, CSTR(objOpnPrice), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(buyOpen)
+				ObjectSet 0, CSTR(objOpnPrice), OBJPROP_COLOR , RGBColor(0,255,0)
+				
+				if Bid - buyOpen > point*trailingStop then
+				for j = 1 to ordersTotal()
+					orderSelectByIndex(CINT(j))
+					OrderGetInteger OPERATION_TYPE_ENUM,result
+					if OrderSymbol() = chartSymbol(0) and result = -1 then
+						orderGetDouble ORDER_SL, buyStop
+						orderGetDouble ORDER_TP, buyTP
+						if buyStop < Bid - Point*trailingStop then
+							if not UpdateSLTPOrder( OrderGetID(CINT(j)), CDBL(lots), Bid - Point*trailingStop, CDBL(buyTP))	then
+								PrintData("OCO ORDER UPDATE ERROR: " & ErrorDescription(GetLastError()))
+								Alert ErrorDescription(GetLastError())
+							end if
+							ObjectDelete 0, CSTR(SLHL)
+							ObjectDelete 0, CSTR(objSLText)
+							AddObject 0, CSTR(SLHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(Bid - Point*trailingStop)
+							AddObject 0, CSTR(objSLText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(Bid - Point*trailingStop)
+							ObjectSet 0, CSTR(objSLText), OBJPROP_TEXT , "StopLoss"
+						end if
+					end if
+				next
+				end if
+			end if
+		
+			if GetPositionType() < 0 then
+				CloseOposite(TRADE_ACTION_BUY_STOP)
+				PositionGetDouble POSITION_PRICE_OPEN,sellOpen
+				tradeAction = "SELL"
+								
+				AddObject 0, CSTR(SLHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(sSLprice)
+				ObjectSet 0, CSTR(SLHL), OBJPROP_COLOR , RGBColor(255,0,0)
+				AddObject 0, CSTR(objSLText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(sSLprice)
+				ObjectSet 0, CSTR(objSLText), OBJPROP_TEXT , "StopLoss"
+				AddObject 0, CSTR(TPHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(sTPprice)
+				ObjectSet 0, CSTR(TPHL), OBJPROP_COLOR , RGBColor(255,0,0)
+				AddObject 0, CSTR(objTPText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(sTPprice)
+				ObjectSet 0, CSTR(objTPText), OBJPROP_TEXT , "TakeProfit"
+				AddObject 0, CSTR(objOpnPrice), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(sellOpen)
+				ObjectSet 0, CSTR(objOpnPrice), OBJPROP_COLOR , RGBColor(0,255,0)
+				
+				if sellOpen - Ask > point*trailingStop then
+					for j = 1 to ordersTotal()
+						orderSelectByIndex(CINT(j))
+						OrderGetInteger OPERATION_TYPE_ENUM,result
+						if OrderSymbol() = chartSymbol(0) and result = 1 then
+							orderGetDouble ORDER_SL, sellStop
+							orderGetDouble ORDER_TP, sellTP
+							if sellStop > Ask + Point*trailingStop then
+							if not UpdateSLTPOrder( OrderGetID(CINT(j)), CDBL(lots), Ask + Point*trailingStop, CDBL(sellTP))	then
+								PrintData("OCO ORDER UPDATE ERROR: " & ErrorDescription(GetLastError()))
+								Alert ErrorDescription(GetLastError())
+							end if
+							ObjectDelete 0, CSTR(SLHL)
+							obJectDelete 0, CSTR(objSLText)
+							AddObject 0, CSTR(SLHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(Ask + Point*trailingStop)
+							AddObject 0, CSTR(objSLText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(Ask + Point*trailingStop)
+							ObjectSet 0, CSTR(objSLText), OBJPROP_TEXT , "StopLoss"
+						end if
+					end if
+
+				next
+				end if
+			end if
+		end if
+	next
+	
+	if prvPosCount <> posCount then
+		objectDeleteAll(0)
+	end if
+	prvPosCount = posCount
+
+
+end if
+
+End Sub
+
+
+
+Public Sub OnInit()
+
+
+
+
+End Sub
+
+
+private sub drawLine(oid)
+
+    OrderSelect(CLNG(oid))
+	if orderSymbol() = chartSymbol(0) then
+		OrderGetDouble ORDER_PRICE_OPEN, opnPr
+		OrderGetInteger OPERATION_TYPE_ENUM,result
+
+
+		if result = TRADE_ACTION_SELL_STOP then
+			OrderGetDouble ORDER_SL, sSLprice
+			OrderGetDouble ORDER_TP, sTPprice
+			if CDBL(ordSellPrice) <> CDBL(opnPr) then
+				ObjectDelete 0,CSTR(objOrderSellHL)
+				ObjectDelete 0,CSTR(objOrderSellArrow)
+				ObjectDelete 0,CSTR(objOrderSellText)
+				
+			end if
+			AddObject 0, CSTR(objOrderSellHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(opnPr)
+			ObjectSet 0, CSTR(objOrderSellHL), OBJPROP_COLOR , RGBColor(0,255,0)
+			AddObject 0, CSTR(objOrderSellArrow), OBJ_SIGNAL, 0, GetTime(0,bars(0)), CDBL(opnPr)
+			AddObject 0, CSTR(objOrderSellText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(opnPr)
+			ObjectSet 0, CSTR(objOrderSellText), OBJPROP_TEXT , CSTR(oid) + " Sell Stop " + CSTR(opnPr)
+			ordSellPrice = opnPr
+			
+
+		end if
+		if result = TRADE_ACTION_BUY_STOP then
+			OrderGetDouble ORDER_SL, bSLprice
+			OrderGetDouble ORDER_TP, bTPprice
+			if CDBL(ordBuyPrice) <> CDBL(opnPr) then
+				ObjectDelete 0,CSTR(objOrderBuyHL)
+				ObjectDelete 0,CSTR(objOrderBuyArrow)
+				ObjectDelete 0,CSTR(objOrderBuyText)
+				
+			end if
+
+			AddObject 0, CSTR(objOrderBuyHL), OBJ_HLINE, 0, GetTime(0,bars(0)), CDBL(opnPr)
+			ObjectSet 0, CSTR(objOrderBuyHL), OBJPROP_COLOR , RGBColor(0,255,0)
+			AddObject 0, CSTR(objOrderBuyArrow), OBJ_SIGNAL, 0, GetTime(0,bars(0)), CDBL(opnPr)
+			AddObject 0, CSTR(objOrderBuyText), OBJ_TEXT, 0, GetTime(0,bars(0)-50), CDBL(opnPr)
+			ObjectSet 0, CSTR(objOrderBuyText), OBJPROP_TEXT , CSTR(oid) + " Buy Stop " + CSTR(opnPr)
+			ordBuyPrice = opnPr
+			
+		end if
+		
+
+
+	
+
+	end if
+
+
+end sub
+
+
+
+
+Public Sub OnOrderTrade(actionType ,orderID , returnValue)
+
+if returnValue = TRADE_RETCODE_DONE_RESULT and openCounterOrder then
+	if OpenPendingOrder( TRADE_ACTION_BUY_STOP, CDBL(lots), CDBL(distance), CDBL(stoploss), CDBL(takeprofit) ) then
+		openCounterOrder = false
+	else
+			PrintData("OCO OPEN COUNTER ORDER ERROR: " & ErrorDescription(GetLastError()))
+			Alert ErrorDescription(GetLastError())
+	end if
+	
+end if
+
+if actionType = TRADE_LIMIT_ORDER_DELETE then
+	
+		ObjectDelete 0,CSTR(objOrderSellHL)
+		ObjectDelete 0,CSTR(objOrderSellArrow)
+		ObjectDelete 0,CSTR(objOrderBuyHL)
+		ObjectDelete 0,CSTR(objOrderBuyArrow)
+		ObjectDelete 0,CSTR(objOrderBuyText)
+		ObjectDelete 0,CSTR(objOrderSellText)
+		onTick chartSymbol(0)
+end if
+
+
+
+
+End Sub
+
+
+''' <summary>
+''' The OnCalculate function called when a new candle received
+''' </summary>
+
+Public Sub OnCalculate(symbol, symbolPeriod, openVal, highVal, lowVal, closeVal)
+
+End Sub
+
+''' <summary>
+''' The function is generated when deinitialization script
+''' </summary>
+
+Public Sub OnDeInit()
+
+ObjectDeleteAll(0)
+
+
+End Sub
+
+
+
+Public Sub OnPositionTrade(actionType ,ticketID)
+
+
+
+
+
+End Sub

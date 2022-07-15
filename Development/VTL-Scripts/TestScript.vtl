@@ -1,0 +1,272 @@
+
+'''#####################################################################################
+'''####     Script Name: Test script                                              ######
+'''####     Author     : Zobad Mahmood                                              ######
+'''####     Website    : www.algotradeup.com                                 ######
+'''####     Date       : 14/07/2022 14:34:19               ######
+'''####     Description: Description                                              ######
+'''#####################################################################################
+
+
+''' <summary>
+''' The main function is the entry point for any Script program
+''' </summary>
+'##Inputs
+
+''Dim _starting_lots as Double = 0.1 'Starting lots.
+''Dim multiplier as Double = 1.25 'lot multiplier.
+''Dim _max_legs as Integer = 3 'max legs allowed seperate for buy and sell
+
+'## End of Inputs
+'##Input Declaration
+Dim symbol, lot_multiplier, initial_lot, profit_target, risk_money, trade_comment,OrderPlaced
+
+' ' ' ###########################	INPUT PARAMS	###############################
+symbol = "EUR/USD"
+initial_lot = 0.10
+lot_multiplier = 1.25
+profit_target = 5
+risk_money = 5
+trade_comment = "Test"
+' ' '####################################################################################
+Dim Point
+
+Public Sub main()
+''''TODO: Script program start methodEnd Sub
+	PrintLog("Profit Target: " & CDBL(profit_target) & " Loss Risk: " &(CDBL(risk_money) * -1)) 
+End sub
+
+''' <summary>
+''' The function is generated when a new tick is received for any symbol
+''' </summary>
+
+
+Public Sub OnTick(symbolName)
+''Get current symbol and place order
+	Dim totalPos, count_buy, count_sell, profit	
+	
+	GetTotalPositions totalPos, count_buy, count_sell
+	
+	PlaceHedgeOrder totalPos, count_buy, count_sell 
+	
+	if(totalPos > 0) then
+		MonitorPnl()
+	End if
+
+End Sub
+
+private Sub PlaceHedgeOrder( ByVal total , ByVal c_buy , ByVal c_sell )
+	if(total <1 ) Then
+		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+	End if
+	if(c_buy > 0 and c_sell=0) Then
+		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+	End if
+	if(c_buy = 0 and c_sell>0) Then
+		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+	End if
+End Sub
+
+private Sub MonitorPnl()
+	dim profit
+	profit = GetTotalProfit()
+	'''PrintLog("Total positions: " & CSTR(totalPos) & " Buys# :" & CSTR(count_buy)& " Sells# : " & CSTR(count_sell) & " Profit: " &cstr(profit) )
+	if ( (cint(totalPos) > 0)) then
+		if (CDBL(profit) >= CDBL(profit_target) or CDBL(profit) <= (CDBL(risk_money) * -1) )  then
+			CloseAll()
+		End if
+	End if
+
+End Sub
+private Sub GetLastPosition(ByRef b_tckt, ByRef s_tckt)
+End Sub
+private sub GetTotalPositions()
+	dim total, tkt, comm, count 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+		count=count+1	
+		End if
+	Next
+	' ' 'PrintLog("Count " &count)
+	'''return count
+End sub
+
+private sub GetTotalPositionsII( ByRef t )
+End sub
+
+''' <summary>
+''' The function returns the total orders, buy orders and sell orders
+''' </summary>
+private sub GetTotalPositions( ByRef total_c, ByRef b_count , ByRef s_count)
+	dim total, tkt, comm, count 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+			if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+				count=count+1
+				If (GetPositionType() = -1) then 
+				s_count=s_count+1
+				End if
+				If(GetPositionType() = 1) then 
+				b_count=b_count+1
+				End if
+			End if
+	Next
+	total_c = count
+	
+End sub
+
+''' <summary>
+''' The function returns the total orders, buy orders and sell orders
+''' </summary>
+Public Function GetTotalProfit()
+	dim total, tkt, comm, profit, pos_profit 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+			if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+				PositionGetDouble POSITION_PROFIT , pos_profit
+				profit = profit + pos_profit
+			End if
+	Next
+	GetTotalProfit = Cdbl(profit)
+	
+End Function
+
+private sub CloseAllMulti()
+	dim total, tkt, comm, count, Tickets, lot, Lots 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+			Tickets = tkt & "," &  Tickets
+			PositionGetDouble POSITION_AMOUNT, lot
+			Lots = lot & "," & Lots  
+		End if
+	Next
+	PrintLog("Tickets: " & Tickets)
+	PrintLog("Lots: " & Lots)
+	If CloseMultiPositions(Cstr(Tickets), Cstr(Lots))= false then 
+		PrintLog( ErrorDescription(GetLastError()) )
+	End IF 
+
+	' ' 'PrintLog("Count " &count)
+	'''return count
+End sub
+
+private sub CloseAll()
+	dim total, tkt, comm, count, Tickets, lot, Lots 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+			Tickets = tkt & "," &  Tickets
+			PositionGetDouble POSITION_AMOUNT, lot
+			If CloseMarketOrder(Clng(tkt),Cdbl(lot))= false then 
+				PrintLog( ErrorDescription(GetLastError()) )
+			End IF  
+		End if
+	Next
+End sub
+
+
+
+''' <summary>
+''' The function is generated when initialization script
+''' </summary>
+
+Public Sub OnInit()
+''''TODO: initialization method
+
+End Sub
+
+
+''' <summary>
+''' The function is generated when deinitialization script
+''' </summary>
+
+Public Sub OnDeInit()
+''''TODO: deinitialization method
+
+End Sub
+
+
+''' <summary>
+''' The OnTimer function called when the timer event occurs
+''' </summary>
+
+Public Sub OnTimer()
+''''TODO: Timer Function
+End Sub
+
+''' <summary>
+''' The OnCalculate function called when a new candle received
+''' </summary>
+
+Public Sub OnCalculate(symbol, symbolPeriod, openVal, highVal, lowVal, closeVal)
+
+End Sub
+''' <summary>
+''' Raise when all data  are loaded after Login 
+''' </summary>
+
+Public Sub AllDataLoaded()
+
+End Sub
+''' <summary>
+''' Raise when Account Selected 
+''' </summary>
+
+Public Sub AccountSelected(accountNumber)
+
+End Sub
+''' <summary>
+''' Raise when the server returns order result 
+''' </summary>
+
+Public Sub OnOrderTrade(actionType ,orderID , returnValue)
+
+End Sub
+''' <summary>
+''' Raise when the server returns position result 
+''' </summary>
+
+Public Sub OnPositionTrade (actionType ,ticketID)
+
+End Sub
+''' <summary>
+''' Raise when the server returns Manage SL/TP Orders after calling RequestManageOrders method  
+''' </summary>
+
+public sub OnManageOrdersReceived(manageOrders)
+
+End Sub
+''' <summary>
+''' Generatd after requested prices from the server for new symbol 
+''' </summary>
+
+Public Sub PriceLoaded(TimeArr,OpenArr,HighArr,LowArr,CloseArr)
+ '''TODO: Implement the handler
+
+End Sub
+''' <summary>
+''' Generatd after change the chart period 
+''' </summary>
+
+Public Sub PeriodChanged (PeriodName, SymbolName)
+ '''TODO: Implement the handler
+
+End Sub
