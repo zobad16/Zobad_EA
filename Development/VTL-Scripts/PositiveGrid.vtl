@@ -11,13 +11,7 @@
 ''' <summary>
 ''' The main function is the entry point for any Script program
 ''' </summary>
-'##Inputs
 
-''Dim _starting_lots as Double = 0.1 'Starting lots.
-''Dim multiplier as Double = 1.25 'lot multiplier.
-''Dim _max_legs as Integer = 3 'max legs allowed seperate for buy and sell
-
-'## End of Inputs
 '##Input Declaration
 Dim symbol, lot_multiplier, initial_lot, tp,sl,profit_target, risk_money, trade_comment,OrderPlaced, threshold, max_legs, pt
 
@@ -68,12 +62,16 @@ private Sub PlaceHedgeOrder( ByVal total , ByVal c_buy , ByVal c_sell )
 	if(total <1 ) Then
 		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
 		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		ModifyPosition(-1)
+		ModifyPosition(1)
 	End if
 	if(c_buy > 0 and c_sell=0) Then
 		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		ModifyPosition(-1)
 	End if
 	if(c_buy = 0 and c_sell>0) Then
 		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		ModifyPosition(1)
 	End if
 End Sub
 
@@ -142,6 +140,9 @@ private Sub CheckPositiveGrid(ByVal legs, ByVal mode)
 	End if
 	
 End Sub
+
+
+
 Public Function GetLastOrderPrice(ByVal op)
 	dim ticket , o_price
 	ticket = GetLastOrder(op , trade_comment)
@@ -280,7 +281,51 @@ private sub CloseAll()
 		End if
 	Next
 End sub
-
+Public Function ModifyPosition(ByVal op)
+	dim total, tkt, pos_time , t_time, f_tkt, slp, tpp
+	dim OrderLots, point
+	Symbol=ChartSymbol(0)
+	SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
+	SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
+	point = GetPoint()
+	if(sl = 0) Then
+		slp = ""
+	End If
+	if(tp = 0) Then
+		tpp = ""
+	End if
+	if(op = -1) Then
+		if(sl >0) Then
+			slp = cdbl(Ask+sl* point)
+		End If
+		if(tp > 0) Then
+			tpp = cdbl(Ask-tp* point)
+		End If
+	End If
+	if(op = 1) Then
+		if(sl >0) Then
+			slp = cdbl(Ask-sl* point)
+		End If
+		if(tp > 0) Then
+			tpp = cdbl(Ask+tp* point)
+		End If
+	End If
+	pos_time = #01/01/1994#
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol and GetPositionType() = CInt(op)) Then
+			PrintLog("Modifying TP/SL")
+			PositionGetDouble POSITION_AMOUNT,OrderLots
+			if(getPositiontype()=op) then					
+				result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),tpp,slp)
+			end If
+		End If
+				'''End if
+	Next
+End Function
 
 
 ''' <summary>
@@ -343,27 +388,47 @@ End Sub
 ''' </summary>
 
 Public Sub OnPositionTrade (actionType ,ticketID)
-	'dim OrderLots, point
-	'Symbol=ChartSymbol(0)
-	'SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
-	'SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
-	'point = GetPoint()
-	'if(actionType=5) then
-	'	PositionSelect(clng(ticketID))
-'
-'		PositionGetDouble POSITION_AMOUNT,OrderLots
-'		if(getPositiontype()=TRADE_ACTION_SELL) then				
-'			result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),cdbl(Ask+sl* point),cdbl(Ask-tp* point))
-'		end If
-'		if(getPositiontype()=TRADE_ACTION_BUY) then				
-'			result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),cdbl(Bid-sl* point),cdbl(Bid+tp* point))
-'		End If
-'
-'		if(result = false) then
-'			PrintData "Error placing SL/TP order:" + errordescription(getLastError())
-'			exit sub
-'		end if
-'	end if
+	dim total, tkt, pos_time , t_time, f_tkt, slp, tpp
+	dim OrderLots, point
+	Symbol=ChartSymbol(0)
+	SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
+	SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
+	point = GetPoint()
+	if(sl = 0) Then
+		slp = ""
+	End If
+	if(tp = 0) Then
+		tpp = ""
+	End if
+
+	if(actionType=5) then
+		PositionSelect(clng(ticketID))
+
+		PositionGetDouble POSITION_AMOUNT,OrderLots
+		if(getPositiontype()=TRADE_ACTION_SELL) then
+			if(sl >0) Then
+				slp = cdbl(Ask+sl* point)
+			End If
+			if(tp > 0) Then
+				tpp = cdbl(Ask-tp* point)
+			End If		
+			result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),slp,tpp)
+		end If
+		if(getPositiontype()=TRADE_ACTION_BUY) then	
+			if(sl >0) Then
+				slp = cdbl(Ask-sl* point)
+			End If
+			if(tp > 0) Then
+				tpp = cdbl(Ask+tp* point)
+			End If
+			result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),slp,tpp)
+		End If
+
+		if(result = false) then
+			PrintData "Error placing SL/TP order:" + errordescription(getLastError())
+			exit sub
+		end if
+	end if
 End Sub
 ''' <summary>
 ''' Raise when the server returns Manage SL/TP Orders after calling RequestManageOrders method  
