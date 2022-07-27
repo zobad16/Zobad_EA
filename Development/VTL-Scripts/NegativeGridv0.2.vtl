@@ -1,0 +1,544 @@
+
+'''#####################################################################################
+'''####     Script Name:Negative Grid                                            ######
+'''####     Author     : Zobad Mahmood                                              ######
+'''####     Website    : www.algotradeup.com                                 ######
+'''####     Date       : 14/07/2022 14:34:19               ######
+'''####     Description: Simple negative grid                                             ######
+'''#####################################################################################
+
+
+''' <summary>
+''' The main function is the entry point for any Script program
+''' </summary>
+
+'##Input Declaration
+Dim symbol, lot_multiplier, initial_lot, take_profit,stop_loss,profit_target, risk_money, trade_comment,OrderPlaced, threshold, max_legs, pt, use_avg_tp_sl
+
+' ' ' ###########################	INPUT PARAMS	###############################
+symbol = "GOLD"
+initial_lot = 0.10
+lot_multiplier = 1.25
+take_profit=250
+stop_loss=100
+use_avg_tp_sl= FALSE
+profit_target = 250
+risk_money = 25
+trade_comment = "GridNegative"
+threshold     = 250
+max_legs = 10
+' ' '####################################################################################
+Dim Point
+
+Public Sub main()
+''''TODO: Script program start methodEnd Sub
+	dim p, val
+	p = GetPoint()
+	PrintLog("Profit Target: " & CDBL(profit_target) & " Loss Risk: " &(CDBL(risk_money) * -1) & " TP:" &CDBL(take_profit) & " SL: " &CDBL(stop_loss)) 
+	val = threshold*p
+	PrintLog(" Point: " & CStr(p) & " THRESHOLD*point: " &val )
+End sub
+
+''' <summary>
+''' The function is generated when a new tick is received for any symbol
+''' </summary>
+
+
+Public Sub OnTick(symbolName)
+''Get current symbol and place order
+	Dim totalPos, count_buy, count_sell, profit	
+	
+	GetTotalPositions totalPos, count_buy, count_sell
+	
+	PlaceHedgeOrder totalPos, count_buy, count_sell 
+	
+	if(totalPos > 0) then
+		MonitorPnl()
+		MonitorGrid()
+	End if
+
+End Sub
+
+private Sub PlaceHedgeOrder( ByVal total , ByVal c_buy , ByVal c_sell )
+	if(total <1 ) Then
+		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		'ModifyPosition(-1)
+		'ModifyPosition(1)
+	End if
+	if(c_buy > 0 and c_sell=0) Then
+		NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		'ModifyPosition(-1)
+	End if
+	if(c_buy = 0 and c_sell>0) Then
+		NewMarketOrder 1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+		'ModifyPosition(1)
+	End if
+End Sub
+
+private Sub MonitorPnl()
+	dim profit, loss
+	loss = CDBL(risk_money) * -1
+	profit = GetTotalProfit()
+	'''PrintLog("Total positions: " & CSTR(totalPos) & " Buys# :" & CSTR(count_buy)& " Sells# : " & CSTR(count_sell) & " Profit: " &cstr(profit) )
+	
+	if (CDBL(profit) >= CDBL(profit_target) or CDBL(profit) <= (CDBL(loss)) )  then
+		PrintLog("Closing trades- Dollar based stop hit: " &CStr(profit))
+		CloseAll()
+	End if
+	
+
+End Sub
+
+private Sub MonitorGrid()
+	''' 1) Check total buy legs and sell elgs
+	''' 2) Check Grid Entry buy
+	''' 3) Check Grid Entry sell
+	Dim buy_count, sell_count, total_count
+	GetTotalPositions total_count, buy_count, sell_count
+	CheckNegativeGrid buy_count, 1 
+	CheckNegativeGrid sell_count, -1
+	
+End Sub
+private Sub CheckNegativeGrid(ByVal legs, ByVal mode)
+	Dim open_price, a_point, curr_price, diff,n_lot
+	a_point = GetPoint()
+	open_price = 0.0
+	if(legs < max_legs) Then
+		open_price = GetLastOrderPrice(mode)
+		'''PrintLog("Open price: " &CStr(open_price))
+		if(mode = -1) Then
+			SymbolInfoDouble CStr(symbol), SYMBOL_ASK, curr_price
+			diff = Cdbl(curr_price) - CDbl(open_price) 
+			'''PrintLog("Curr Price:" & CStr(curr_price) & "diff " & CStr(diff))
+			if(diff >  (CDbl(threshold)* CDbl(a_point)) ) then
+				PrintLog("Opening new buy leg")
+				PrintLog((Cdbl(curr_price) - CDbl(open_price)))
+				n_lot = MathRound(initial_lot * (lot_multiplier^legs),2)
+				NewMarketOrder 1,CSTR(symbol),CDBL(n_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+				'''Modify order sltp
+			End if	
+		End if
+		if(mode = 1) Then
+			SymbolInfoDouble CStr(symbol), SYMBOL_BID, curr_price 
+			diff = Cdbl(open_price) - CDbl(curr_price) 
+			'''PrintLog("Curr Price:" & CStr(curr_price) & "diff " & CStr(diff))
+			
+			if(diff> threshold*a_point) then
+				PrintLog("Opening new buy leg")
+				PrintLog((Cdbl(open_price) - CDbl(curr_price)))
+				'''NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment)
+				n_lot = MathRound(initial_lot * (lot_multiplier^legs),2)
+				NewMarketOrder -1,CSTR(symbol),CDBL(n_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+			End if	
+		End If
+	End if
+	
+End Sub
+
+private Sub CheckPositiveGrid(ByVal legs, ByVal mode)
+	Dim open_price, a_point, curr_price, diff,n_lot
+	a_point = GetPoint()
+	open_price = 0.0
+	if(legs < max_legs) Then
+		open_price = GetLastOrderPrice(mode)
+		'''PrintLog("Open price: " &CStr(open_price))
+		if(mode = 1) Then
+			SymbolInfoDouble CStr(symbol), SYMBOL_ASK, curr_price
+			diff = Cdbl(curr_price) - CDbl(open_price) 
+			'''PrintLog("Curr Price:" & CStr(curr_price) & "diff " & CStr(diff))
+			if(diff >  (CDbl(threshold)* CDbl(a_point)) ) then
+				PrintLog("Opening new buy leg")
+				PrintLog((Cdbl(curr_price) - CDbl(open_price)))
+				n_lot = MathRound(initial_lot * (lot_multiplier^legs),2)
+				NewMarketOrder 1,CSTR(symbol),CDBL(n_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+				'''Modify order sltp
+				'''NewSLTPOrder(clng(ticketID),cdbl(OrderLots),cdbl(Bid-stoploss* pips2dbl),cdbl(Bid+takeprofit* pips2dbl))
+			End if	
+		End if
+		if(mode = -1) Then
+			SymbolInfoDouble CStr(symbol), SYMBOL_BID, curr_price 
+			diff = Cdbl(open_price) - CDbl(curr_price) 
+			'''PrintLog("Curr Price:" & CStr(curr_price) & "diff " & CStr(diff))
+			
+			if(diff> threshold*a_point) then
+				PrintLog("Opening new sell leg")
+				PrintLog((Cdbl(open_price) - CDbl(curr_price)))
+				'''NewMarketOrder -1,CSTR(symbol),CDBL(initial_lot), CSTR(trade_comment)
+				n_lot = MathRound(initial_lot * (lot_multiplier^legs),2)
+				NewMarketOrder -1,CSTR(symbol),CDBL(n_lot), CSTR(trade_comment) '(1/-1 = Buy / Sell, SymbolName, Lots)
+			End if	
+		End If
+	End if
+	
+End Sub
+
+
+
+Public Function GetLastOrderPrice(ByVal op)
+	dim ticket , o_price
+	ticket = GetLastOrder(op , trade_comment)
+	''' PrintLog("GetLastOrderPrice: TCKT: " & CStr(ticket))
+	PositionSelect(Clng(ticket))
+	PositionGetDouble POSITION_PRICE_OPEN , o_price 
+	''' PrintLog("Last order price: " & CStr(o_price))
+	GetLastOrderPrice = Cdbl(o_price)
+
+End Function
+Public Function GetLastOrder(ByVal op, ByVal comm)
+	dim total, tkt, pos_time , t_time, f_tkt
+	pos_time = #01/01/1994#
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol and GetPositionType() = CInt(op)) Then
+			t_time = CDate(GetPositionTime())
+			''' PrintLog("t: " & CStr(t_time) & " pos_T: " & CStr(pos_time) & " Ticket: " &Clng(tkt))
+			if( CDate(t_time) > CDate(pos_time) ) Then
+				pos_time = t_time
+				f_tkt = clng(tkt)
+				''' PrintLog("f_tkt: " &CLng(f_tkt))
+			End If
+		End If
+				'''End if
+	Next
+	GetLastOrder = f_tkt
+	
+End Function
+
+private sub GetTotalPositions()
+	dim total, tkt, comm, count 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+		count=count+1	
+		End if
+	Next
+	' ' 'PrintLog("Count " &count)
+	'''return count
+End sub
+
+private sub GetTotalPositionsII( ByRef t )
+End sub
+
+''' <summary>
+''' The function returns the total orders, buy orders and sell orders
+''' </summary>
+private sub GetTotalPositions( ByRef total_c, ByRef b_count , ByRef s_count)
+	dim total, tkt, comm, count 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+			if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+				count=count+1
+				If (GetPositionType() = -1) then 
+				s_count=s_count+1
+				End if
+				If(GetPositionType() = 1) then 
+				b_count=b_count+1
+				End if
+			End if
+	Next
+	total_c = count
+	
+End sub
+Public Function GetPoint()
+	dim piploc, Point
+	SymbolInfoInteger cstr (symbol), SYMBOL_PIP_LOCATION, piploc
+	Point=10^piploc
+	GetPoint = Point
+End Function
+''' <summary>
+''' The function returns the total orders, buy orders and sell orders
+''' </summary>
+Public Function GetTotalProfit()
+	dim total, tkt, comm, profit, pos_profit 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+			if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+				PositionGetDouble POSITION_PROFIT , pos_profit
+				profit = profit + pos_profit
+			End if
+	Next
+	GetTotalProfit = Cdbl(profit)
+	
+End Function
+
+private sub CloseAllMulti()
+	dim total, tkt, comm, count, Tickets, lot, Lots 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+			Tickets = tkt & "," &  Tickets
+			PositionGetDouble POSITION_AMOUNT, lot
+			Lots = lot & "," & Lots  
+		End if
+	Next
+	'''PrintLog("Tickets: " & Tickets)
+	'''PrintLog("Lots: " & Lots)
+	If CloseMultiPositions(Cstr(Tickets), Cstr(Lots))= false then 
+		PrintLog( ErrorDescription(GetLastError()) )
+	End IF 
+
+	' ' 'PrintLog("Count " &count)
+	'''return count
+End sub
+
+private sub CloseAll()
+	dim total, tkt, comm, count, Tickets, lot, Lots 
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+			Tickets = tkt & "," &  Tickets
+			PositionGetDouble POSITION_AMOUNT, lot
+			If CloseMarketOrder(Clng(tkt),Cdbl(lot))= false then 
+				PrintLog( ErrorDescription(GetLastError()) )
+			End IF  
+		End if
+	Next
+End sub
+Public Function ModifyPosition(ByVal op)
+	dim total, tkt, pos_time , t_time, f_tkt, slp, tpp, smb
+	dim OrderLots, point
+	Symbol=ChartSymbol(0)
+	SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
+	SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
+	point = GetPoint()
+	if(sl = 0) Then
+		slp = ""
+	End If
+	if(tp = 0) Then
+		tpp = ""
+	End if
+	if(op = -1) Then
+		if(sl >0) Then
+			slp = cdbl(Ask+sl* point)
+		End If
+		if(tp > 0) Then
+			tpp = cdbl(Ask-tp* point)
+		End If
+	End If
+	if(op = 1) Then
+		if(sl >0) Then
+			slp = cdbl(Ask-sl* point)
+		End If
+		if(tp > 0) Then
+			tpp = cdbl(Ask+tp* point)
+		End If
+	End If
+	pos_time = #01/01/1994#
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		smb = GetPositionSymbol()
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol and GetPositionType() = CInt(op)) Then
+			PrintLog("Modifying TP/SL")
+			PositionGetDouble POSITION_AMOUNT,OrderLots
+			if(getPositiontype()=op) then					
+				result = NewSLTPOrder(clng(ticketID),cdbl(OrderLots),tpp,slp)
+			end If
+		End If
+				'''End if
+	Next
+End Function
+
+
+''' <summary>
+''' The function is generated when initialization script
+''' </summary>
+
+Public Sub OnInit()
+	tp = CDBL(tp)
+	sl = CDBL(sl)
+End Sub
+
+
+''' <summary>
+''' The function is generated when deinitialization script
+''' </summary>
+
+Public Sub OnDeInit()
+''''TODO: deinitialization method
+
+End Sub
+
+
+''' <summary>
+''' The OnTimer function called when the timer event occurs
+''' </summary>
+
+Public Sub OnTimer()
+''''TODO: Timer Function
+End Sub
+
+''' <summary>
+''' The OnCalculate function called when a new candle received
+''' </summary>
+
+Public Sub OnCalculate(symbol, symbolPeriod, openVal, highVal, lowVal, closeVal)
+
+End Sub
+''' <summary>
+''' Raise when all data  are loaded after Login 
+''' </summary>
+
+Public Sub AllDataLoaded()
+
+End Sub
+''' <summary>
+''' Raise when Account Selected 
+''' </summary>
+
+Public Sub AccountSelected(accountNumber)
+
+End Sub
+''' <summary>
+''' Raise when the server returns order result 
+''' </summary>
+
+Public Sub OnOrderTrade(actionType ,orderID , returnValue)
+
+End Sub
+''' <summary>
+''' Raise when the server returns position result 
+''' </summary>
+Public Function ModifyPositionFix(ByVal tckt)
+	dim total, tkt, pos_time , t_time, f_tkt, slp, tpp, op_price, tp,sl,comm,smb
+	dim OrderLots, point
+	Symbol=ChartSymbol(0)
+	point = GetPoint()
+	tp=take_profit
+	sl=stop_loss
+	PrintLog("ModifyPositionFix: TCKT#" &clng(tckt))
+	
+	PositionSelect(clng(tckt))
+	PositionGetDouble POSITION_AMOUNT,OrderLots
+	PositionGetString POSITION_COMMENT,comm
+	smb = GetPositionSymbol()
+	if(getPositiontype()=TRADE_ACTION_SELL and comm = trade_comment and smb = symbol ) then
+		SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
+		SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
+		if(cdbl(sl) >0 and cdbl(tp) >0) Then
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(Ask+sl* point),cdbl(Bid-tp* point))
+			
+		End If
+		if(cdbl(tp) > 0 and cdbl(sl) =0) Then
+			PrintLog("SELL- Updating tp only")
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(sl),cdbl(Ask-tp* point))
+		End If		
+		if(cdbl(tp)= 0 and cdbl(sl) > 0) Then
+			PrintLog("SELL- Updating sl only")
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(Ask+sl* point),cdbl(tp))
+		End If	
+	
+	End if
+	if(getPositiontype()=TRADE_ACTION_BUY and comm = trade_comment and smb = symbol) then
+		SymbolInfoDouble cstr(symbol),SYMBOL_ASK,Ask
+		SymbolInfoDouble cstr(symbol),SYMBOL_BID,Bid
+		PrintLog("Updating tp/sl: Ticket: " &cstr(tckt) & " op: BUY :sl " & cstr(sl))
+		if(cdbl(sl) >0 and tp >0) Then
+			PrintLog("Updating tp/sl sl:" &cdbl(Bid-sl* point))
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(Bid-sl* point),cdbl(Ask+tp* point))
+		End If
+		if(cdbl(tp)> 0 and cdbl(sl) =0) Then
+			PrintLog("BUY- Updating tp only")
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(sl),cdbl(Ask+tp* point))
+		End If		
+		if(cdbl(tp)= 0 and cdbl(sl) > 0) Then
+			PrintLog("BUY- Updating sl only")
+			result = NewSLTPOrder(clng(tckt),cdbl(OrderLots),cdbl(Bid-sl* point),cdbl(tp))
+		End If
+	End If
+	
+End Function
+Public Function ModifyPositionAverage()
+	dim be_price
+	CalculateBEPrice be_price
+	PrintLog("Breakeven price: " &be_price)
+	''' TODO: 1) loop through positions 
+	''' 2) check if position have tp/sl and update tpsl order
+	''' 3) if not found add new tpsl order
+	
+End Function
+Public Sub CalculateBEPrice(ByRef result)
+	dim tkt, comm,lot
+	dim sum_lots, op_price, weighted_price, sum_weighted_price
+	total = PositionTotal()
+	For i = 1 to total
+		tkt = PositionGetTicket(Cint(i))
+		PositionSelect(Clng(tkt)) 
+		PositionGetString POSITION_COMMENT,comm
+		if( comm= trade_comment and PositionGetSymbol(Cint(i)) = symbol) then ' ' AND GetPositionType() = TRADE_ACTION_SELL
+			PositionGetDouble POSITION_AMOUNT, lot
+			PositionGetDouble POSITION_PRICE_OPEN ,op_price
+			weighted_price = lot * op_price
+			sum_weighted_price = sum_weighted_price+weighted_price
+			sum_lots = sum_lots+lot
+		End if
+	Next
+	result = sum_weighted_price/sum_lots
+End Sub
+Public Sub OnPositionTrade (actionType ,ticketID)
+	if(actionType=5) then
+		if(CBool(use_avg_tp_sl) = FALSE) then
+			ModifyPositionFix clng(ticketID)
+		End If
+		if(CBool(use_avg_tp_sl) = TRUE) then
+			ModifyPositionAverage()
+		End If
+
+	end if
+	
+End Sub
+
+''' <summary>
+''' Raise when the server returns Manage SL/TP Orders after calling RequestManageOrders method  
+''' </summary>
+
+public sub OnManageOrdersReceived(manageOrders)
+	Dim i
+	if(manageOrders.Count=0) Then
+	'''TODO new tp sl for that position
+	Else
+		For i = 1 to manageOrders.Count()
+			'''TODO: if buy update tp get BE Price
+			''' sl = BE Price
+		Next
+	End If
+	
+	
+End Sub
+''' <summary>
+''' Generatd after requested prices from the server for new symbol 
+''' </summary>
+
+Public Sub PriceLoaded(TimeArr,OpenArr,HighArr,LowArr,CloseArr)
+ '''TODO: Implement the handler
+
+End Sub
+''' <summary>
+''' Generatd after change the chart period 
+''' </summary>
+
+Public Sub PeriodChanged (PeriodName, SymbolName)
+ '''TODO: Implement the handler
+
+End Sub 
