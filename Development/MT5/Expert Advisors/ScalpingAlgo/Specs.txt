@@ -1,0 +1,37 @@
+SCALPING ALOG-M15 [EA-MT5]
+
+Buy/Sell Signal Rules:
+
+#Buy Signal:
+1) The candle closes above the upper Bollinger Band (BB) and a higher high is observed.
+2) The current candle is above the EMA60.
+3) The RSI value is below 30 at the close of Candle 1.
+4) Check the length of previous n candles. If within the allowed range take entry
+#Sell Signal:
+1) The candle closes below the lower Bollinger Band (BB) and a lower low is observed.
+2) The current candle is below the EMA60.
+3) The RSI value is above 70 at the close of Candle 1.
+4) Check the length of previous n candles. If within the allowed range take entry
+
+In addition to the Bollinger Band signals, we also use the Relative Strength Index (RSI) to confirm the generated signal. 
+Specifically, if the RSI value is below 30 at the close of Candle 1 for a buy signal, or above 70 for a sell signal, and 
+the current candle is above/below the EMA60, then the corresponding signal is confirmed.
+
+#Higher high - Candle1 closing above candle 2 closing
+#Lower Low - Candle1 closing below candle 2 closing
+
+TP/SL:
+The input variable list includes multiple options for setting the stop-loss and take-profit levels:
+
+1) TP/SL Calculation by ATR: A True/False input variable to set TP/SL levels based on the Average True Range (ATR) indicator. If set to true, the EA will calculate the TP/SL levels based on ATR.
+2) TP/SL_Fix Pip: A True/False input variable to set the TP/SL levels based on a fixed pip value.
+3) SL if market test MidBand of BB
+
+Trailing Stop:
+The trailing stop feature is optional and can be included in the EA with an input variable to set the distance of the trailing stop from the current market price. If the input variable for trailing stop is set to true, the EA should apply the trailing stop to the trade. If the input variable is set to false, the EA should not apply the trailing stop.
+
+Auto Risk Management and Lot Calculation:
+The EA should include auto risk management based on the account balance percentage and lot calculation. The input variable list includes the following options:
+
+Auto Risk Management: Input variable to set the risk percentage of the account balance.
+Auto Lot Calculation: A True/False input variable to set the calculation method for lot size based on the calculation of SL/TP based on ATR and risk percentage. If set to true, the EA will automatically calculate the lot size based on the user's account balance and risk tolerance. If set to false, the user can manually set the lot size.
