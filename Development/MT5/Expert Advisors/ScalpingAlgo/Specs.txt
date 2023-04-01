@@ -6,7 +6,7 @@ Buy/Sell Signal Rules:
 1) The candle closes above the upper Bollinger Band (BB) and a higher high is observed.
 2) The current candle is above the EMA60.
 3) The RSI value is below 30 at the close of Candle 1.
-4) Check the length of previous n candles. If within the allowed range take entry
+4) Check the length of previous 2 candles. If > pips range. Take entry
 #Sell Signal:
 1) The candle closes below the lower Bollinger Band (BB) and a lower low is observed.
 2) The current candle is below the EMA60.
@@ -35,3 +35,5 @@ The EA should include auto risk management based on the account balance percenta
 
 Auto Risk Management: Input variable to set the risk percentage of the account balance.
 Auto Lot Calculation: A True/False input variable to set the calculation method for lot size based on the calculation of SL/TP based on ATR and risk percentage. If set to true, the EA will automatically calculate the lot size based on the user's account balance and risk tolerance. If set to false, the user can manually set the lot size.
+
+Directional/Reversal
