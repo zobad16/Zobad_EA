@@ -25,11 +25,11 @@ enum EntryType
 //--- input parameters
 input string      Magic = "814";
 input EntryType Type= SELL_SPREAD; //EntryType
-input string   Symbol1 = "NASf";
-input string   Symbol2 = "NAS100";
+input string   Symbol1 = "GOLDFEB25.a";
+input string   Symbol2 = "XAUUSD";
 input bool     AllowTrade = false;
-input double   Symbol1Lots    = 0.05;
-input double   Symbol2Lots    = 1;
+input double   Symbol1Lots    = 0.1;
+input double   Symbol2Lots    = 0.1;
 input string   _Comment = "Synthetic Spread Trader" ;
 input bool     UseDollarTP=false;
 input bool     UseDollarSL=false;
@@ -37,12 +37,12 @@ input bool     UseGrid        = false;
 input int      LegsAllowed    = 3;
 
 //-------Input variables from GUI
-double   BenchmarkPrice = 164.5;
-double   SellSpread     = 1;
-double   BuySpread      = 5;
-double     LegDollarTP       = 100;
-double      DollarTP       = 100;
-double      DollarSL       =-500;
+double   BenchmarkPrice = 20.0;
+double   SellSpread     = 0.5;
+double   BuySpread      = 3;
+double     LegDollarTP       = 1;
+double      DollarTP       = 20;
+double      DollarSL       =-100;
 double   GridThreshold = 0.1;
 //--------Stats variables
 double deltaHigh = 0.0;
@@ -56,6 +56,9 @@ CLabel  LabelsInputs[10];
 CLabel  LabelsValues[2];
 CLabel  Stats_Lbl[6];
 CLabel  StatsValues_Lbl[6];
+CLabel  EntryAtLbl;
+CLabel  EntryAtValue;
+
 CButton Buttons[5];
 
 color DialogColor= C'16,21,43';
@@ -105,6 +108,7 @@ void OnTick()
    DeltaLabelsUpdate(spreadBidAsk);
    GUILegsUpdate();
    LabelsValues[0].Text(DoubleToString(getPnL(Magic),2));
+   EntryLevelUpdate(brokerSpread);
    double totalOrders = isOrdersTotal(Magic);
    
    if(totalOrders > 0){
@@ -207,7 +211,7 @@ void OnChartEvent(const int id,
 //Initialize GUI
 void InitializeGUI()
   {
-   int width = 450, height = 400;
+   int width = 500, height = 400;
    Dialog.Create(ChartID(),"GoldArbitrageXpert",0,5,20,width,height);
    string dialogNumber=Dialog.Name();
    color bg_color = C'39, 40, 42';
@@ -400,6 +404,15 @@ void InitializeGUI()
    StatsValues_Lbl[2].Text("0");
    StatsValues_Lbl[2].Color(clrWhite)                                       ;
    Dialog.Add(StatsValues_Lbl[2]);
+   
+   EntryAtLbl.Create(0,"Next_Label",0,260,180,0,0);
+   EntryAtLbl.Text("Entry: ");
+   EntryAtLbl.Color(clrWhite)                                       ;
+   Dialog.Add(EntryAtLbl);
+   EntryAtValue.Create(0,"Next_Value",0,335,180,0,0);
+   EntryAtValue.Text("0");
+   EntryAtValue.Color(clrWhite)                                       ;
+   Dialog.Add(EntryAtValue);
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -480,6 +493,12 @@ void SpreadValuesUpdate(double spread, double brokerspread){
    string text = "Spread:  "+DoubleToString(spread,2)+"  |  BrokerSpreads: "+(DoubleToString(brokerspread,2))+" | Type: "+typeStrng;
    Buttons[0].Text(text);
    
+}
+void EntryLevelUpdate(double brokerspread){
+   double netSpreadS = DoubleToString(BenchmarkPrice+brokerspread+SellSpread, Digits());
+   double netSpreadB = DoubleToString(BenchmarkPrice-brokerspread-BuySpread,Digits());
+   string value = "S: "+ netSpreadS+" | B: "+netSpreadB;
+   EntryAtValue.Text(value);
 }
 bool IsBuySpread(double spread)
   {
